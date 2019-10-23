@@ -6,10 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
-	"os"
 	"path"
 	"path/filepath"
 	"regexp"
@@ -62,52 +60,19 @@ func uploadPostHandler(c web.C, w http.ResponseWriter, r *http.Request) {
 	contentType := r.Header.Get("Content-Type")
 
 	if strings.HasPrefix(contentType, "multipart/form-data") {
-		reader, err := r.MultipartReader()
+		file, headers, err := r.FormFile("file")
+		if r.MultipartForm != nil {
+			defer r.MultipartForm.RemoveAll()
+		}
 		if err != nil {
-			badRequestHandler(c, w, r, RespAUTO, "Invalid multipart")
+			oopsHandler(c, w, r, RespHTML, "Could not upload file.")
 			return
 		}
+		defer file.Close()
 
-		var file *os.File
-		for {
-			part, err := reader.NextPart()
-			if err != nil {
-				if err == io.EOF {
-					break
-				}
-				badRequestHandler(c, w, r, RespAUTO, "Invalid multipart")
-				return
-			}
-			if part.FormName() == "file" && part.FileName() != "" {
-				file, err = ioutil.TempFile("", "linx-multipart-")
-				if err != nil {
-					oopsHandler(c, w, r, RespAUTO, "Could not receive file")
-					return
-				}
-				written, err := io.Copy(file, part)
-				if err != nil {
-					oopsHandler(c, w, r, RespAUTO, "Could save file")
-					return
-				}
-				if _, err = file.Seek(0, 0); err != nil {
-					oopsHandler(c, w, r, RespAUTO, "Could save file")
-					return
-				}
-				upReq.src = file
-				upReq.size = written
-				upReq.filename = part.FileName()
-				break
-			}
-		}
-
-		if upReq.src == nil {
-			badRequestHandler(c, w, r, RespAUTO, "Invalid request")
-			return
-		}
-		defer func() {
-			file.Close()
-			os.Remove(file.Name())
-		}()
+		upReq.src = file
+		upReq.size = headers.Size
+		upReq.filename = headers.Filename
 	} else {
 		if r.PostFormValue("content") == "" {
 			badRequestHandler(c, w, r, RespAUTO, "Empty file")
