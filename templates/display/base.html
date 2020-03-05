@@ -19,6 +19,9 @@
             <span>{{ size }}</span> | 
             <a href="{{ filename }}/torrent" download>torrent</a> |
             <a href="{{ sitepath }}{{ selifpath }}{{ filename }}" download>get</a>
+            {% if deleteKey %}
+            | <a id="delete" href="#" data-delete-key="{{ deleteKey }}">delete</a>
+            {% endif %}
         </div>
 
         {% block infoleft %}{% endblock %}
@@ -32,5 +35,6 @@
 
     </div>
 
+    <script src="{{ sitepath }}static/js/util.js?v=1"></script>
     <script src="{{ sitepath }}static/js/clipboard.js"></script>
 {% endblock %}
