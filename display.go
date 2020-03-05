@@ -81,7 +81,9 @@ func fileDisplayHandler(c web.C, w http.ResponseWriter, r *http.Request) {
 		metadata, reader, err := storageBackend.Get(fileName)
 		if err != nil {
 			oopsHandler(c, w, r, RespHTML, err.Error())
+			return
 		}
+		defer reader.Close()
 
 		if metadata.Size < maxDisplayFileSizeBytes {
 			bytes, err := ioutil.ReadAll(reader)
@@ -96,7 +98,9 @@ func fileDisplayHandler(c web.C, w http.ResponseWriter, r *http.Request) {
 		metadata, reader, err := storageBackend.Get(fileName)
 		if err != nil {
 			oopsHandler(c, w, r, RespHTML, err.Error())
+			return
 		}
+		defer reader.Close()
 
 		if metadata.Size < maxDisplayFileSizeBytes {
 			bytes, err := ioutil.ReadAll(reader)
@@ -113,7 +117,9 @@ func fileDisplayHandler(c web.C, w http.ResponseWriter, r *http.Request) {
 		metadata, reader, err := storageBackend.Get(fileName)
 		if err != nil {
 			oopsHandler(c, w, r, RespHTML, err.Error())
+			return
 		}
+		defer reader.Close()
 
 		if metadata.Size < maxDisplayFileSizeBytes {
 			bytes, err := ioutil.ReadAll(reader)
