@@ -90,7 +90,7 @@
 
 			<p>To overwrite a file you uploaded, simply provide the <code>Linx-Delete-Key</code> header with the original file's deletion key.</p>
 
-			<p><strong>Example</p></strong>
+			<p><strong>Example</strong></p>
 
 			<p>To overwrite myphoto.jpg</p>
 
@@ -104,19 +104,14 @@
 
 			<h3>Deleting a file</h3>
 
-			<p>To delete a file you uploaded, make a DELETE request to <code>{{ siteurl }}yourfile.ext</code> with the delete key set as the <code>Linx-Delete-Key</code> header.</p>
+			<p>To delete a file you uploaded, make a DELETE request to <code>{{ siteurl }}yourfile.ext</code>{% if !keyless_delete %} with the delete key set as the <code>Linx-Delete-Key</code> header{% endif %}.</p>
 
 			<p><strong>Example</strong></p>
 
 			<p>To delete myphoto.jpg</p>
 
-			{% if using_auth %}
-			<pre><code>$ curl -H &#34;Linx-Api-Key: mysecretkey&#34; -H &#34;Linx-Delete-Key: mysecret&#34; -X DELETE {{ siteurl }}myphoto.jpg
+			<pre><code>$ curl{% if using_auth %} -H&#34;Linx-Api-Key: mysecretkey&#34;{% endif %}{% if !keyless_delete %} -H &#34;Linx-Delete-Key: mysecret&#34;{% endif %} -X DELETE {{ siteurl }}myphoto.jpg
 DELETED</code></pre>
-			{% else %}
-			<pre><code>$ curl -H &#34;Linx-Delete-Key: mysecret&#34; -X DELETE {{ siteurl }}myphoto.jpg
-DELETED</code></pre>
-			{% endif %}
 
 			<h3>Information about a file</h3>
 

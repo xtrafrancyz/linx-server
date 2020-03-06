@@ -42,8 +42,9 @@ func pasteHandler(c web.C, w http.ResponseWriter, r *http.Request) {
 
 func apiDocHandler(c web.C, w http.ResponseWriter, r *http.Request) {
 	err := renderTemplate(Templates["API.html"], pongo2.Context{
-		"siteurl":     getSiteURL(r),
-		"forcerandom": Config.forceRandomFilename,
+		"siteurl":        getSiteURL(r),
+		"forcerandom":    Config.forceRandomFilename,
+		"keyless_delete": Config.anyoneCanDelete,
 	}, r, w)
 	if err != nil {
 		oopsHandler(c, w, r, RespHTML, "")

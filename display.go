@@ -141,23 +141,18 @@ func fileDisplayHandler(c web.C, w http.ResponseWriter, r *http.Request) {
 		metadata.OriginalName = fileName
 	}
 
-	deleteKey := ""
-	if Config.anyoneCanDelete {
-		deleteKey = metadata.DeleteKey
-	}
-
 	err = renderTemplate(tpl, pongo2.Context{
-		"mime":          metadata.Mimetype,
-		"original_name": metadata.OriginalName,
-		"filename":      fileName,
-		"size":          sizeHuman,
-		"expiry":        expiryHuman,
-		"expirylist":    listExpirationTimes(),
-		"extra":         extra,
-		"forcerandom":   Config.forceRandomFilename,
-		"lines":         lines,
-		"files":         metadata.ArchiveFiles,
-		"deleteKey":     deleteKey,
+		"mime":           metadata.Mimetype,
+		"original_name":  metadata.OriginalName,
+		"filename":       fileName,
+		"size":           sizeHuman,
+		"expiry":         expiryHuman,
+		"expirylist":     listExpirationTimes(),
+		"extra":          extra,
+		"forcerandom":    Config.forceRandomFilename,
+		"lines":          lines,
+		"files":          metadata.ArchiveFiles,
+		"keyless_delete": Config.anyoneCanDelete,
 	}, r, w)
 
 	if err != nil {

@@ -21,7 +21,6 @@ function handleTab(ev) {
         elem.addEventListener("click", function (ev) {
             var xhr = new XMLHttpRequest();
             xhr.open("DELETE", document.location.pathname, true);
-            xhr.setRequestHeader("Linx-Delete-Key", elem.getAttribute("data-delete-key"));
             xhr.onreadystatechange = function() {
                 if (xhr.readyState == 4 && xhr.status === 200) {
                     elem.innerText = "deleted";
