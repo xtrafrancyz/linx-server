@@ -271,6 +271,24 @@ body {
   margin: 0;
 }
 
+#access_key {
+  min-width: 100%;
+  line-height: 1.3em;
+}
+
+#access_key input, span {
+  vertical-align: middle;
+}
+
+#access_key_checkbox {
+  margin: 0;
+}
+
+#access_key_input {
+  padding: 0;
+  display: none;
+}
+
 .oopscontent {
     width: 400px;
 }
@@ -349,6 +367,7 @@ body {
 
 .display-video {
     width: 800px;
+    max-height: 70vh;
 }
 
 .scrollable {

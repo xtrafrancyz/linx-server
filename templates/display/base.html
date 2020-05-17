@@ -1,40 +1,40 @@
 {% extends "../base.html" %}
 
-{% block title %}{{ original_name }}{% endblock %}
+{% block title %}{{sitename}} - {{ original_name }}{% endblock %}
 
 {% block bodymore %}{% endblock %}
 
 {% block content %}
 
-    <div id="info" class="dinfo info-flex">
-        <div id="filename">
-            {{ original_name }}
-        </div>
-
-        <div class="info-actions">
-            {% if expiry %}
-            <span>file expires in {{ expiry }}</span> | 
-            {% endif %}
-            {% block infomore %}{% endblock %}
-            <span>{{ size }}</span> | 
-            <a href="{{ filename }}/torrent" download>torrent</a> |
-            <a href="{{ sitepath }}{{ selifpath }}{{ filename }}" download>get</a>
-            {% if keyless_delete %}
-            | <a id="delete" href="#">delete</a>
-            {% endif %}
-        </div>
-
-        {% block infoleft %}{% endblock %}
+<div id="info" class="dinfo info-flex">
+    <div id="filename">
+        {{ original_name }}
     </div>
 
-    <div id="main" {% block mainmore %}{% endblock %}>
-
-      <div id='inner_content' {% block innercontentmore %}{% endblock %} >
-      {% block main %}{% endblock %}
-      </div>
-
+    <div class="info-actions">
+        {% if expiry %}
+        <span>file expires in {{ expiry }}</span> |
+        {% endif %}
+        {% block infomore %}{% endblock %}
+        <span>{{ size }}</span> |
+        <a href="{{ filename }}/torrent" download>torrent</a> |
+        <a href="{{ sitepath }}{{ selifpath }}{{ filename }}" download>get</a>
+        {% if keyless_delete %}
+        | <a id="delete" href="#">delete</a>
+        {% endif %}
     </div>
 
-    <script src="{{ sitepath }}static/js/util.js?v=2"></script>
-    <script src="{{ sitepath }}static/js/clipboard.js"></script>
+    {% block infoleft %}{% endblock %}
+</div>
+
+<div id="main" {% block mainmore %}{% endblock %}>
+
+    <div id='inner_content' {% block innercontentmore %}{% endblock %}>
+        {% block main %}{% endblock %}
+    </div>
+
+</div>
+
+<script src="{{ sitepath }}static/js/util.js?v=2"></script>
+<script src="{{ sitepath }}static/js/clipboard.js"></script>
 {% endblock %}

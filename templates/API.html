@@ -1,62 +1,71 @@
 {% extends "base.html" %}
 
+{% block title %}{{sitename}} - API{% endblock %}
+
 {% block head %}
 <link href="{{ sitepath }}static/css/github-markdown.css" rel="stylesheet" type="text/css">
 {% endblock %}
 
 {% block content %}
 <div id="main">
-    <div id='inner_content'>
+	<div id='inner_content'>
 		<div class="normal markdown-body">
 
 			<h2>API</h2>
 
 			<h3>Client</h3>
-			<p>To simplify uploading and deleting files, you can use <a target="_blank" href="https://github.com/andreimarcu/linx-client">linx-client</a>, which uses this API.</p>
+			<p>To simplify uploading and deleting files, you can use <a target="_blank"
+					href="https://github.com/andreimarcu/linx-client">linx-client</a>, which uses this API.</p>
 
-			{% if using_auth %}
+			{% if auth != "none" %}
 			<h3>Keys</h3>
-			<p>This instance uses API Keys, therefore you will need to provide a key for uploading and deleting files.<br/> To do so, add the <code>Linx-Api-Key</code> header with your key.</p>
+			<p>This instance uses API Keys, therefore you will need to provide a key for uploading and deleting
+				files.<br /> To do so, add the <code>Linx-Api-Key</code> header with your key.</p>
 			{% endif %}
 
 			<h3>Uploading a file</h3>
 
-			<p>To upload a file, make a PUT request to <code>{{ siteurl }}upload/</code> and you will get the url of your upload back.</p>
+			<p>To upload a file, make a PUT request to <code>{{ siteurl }}upload/</code> and you will get the url of
+				your upload back.</p>
 
 			<p><strong>Optional headers with the request</strong></p>
 
-{% if not forcerandom %}
-			<p>Randomize the filename<br/>
-			<code>Linx-Randomize: yes</code></p>
-{% endif %}
+			{% if not forcerandom %}
+			<p>Randomize the filename<br />
+				<code>Linx-Randomize: yes</code></p>
+			{% endif %}
 
-			<p>Specify a custom deletion key<br/>
-			<code>Linx-Delete-Key: mysecret</code></p>
+			<p>Specify a custom deletion key<br />
+				<code>Linx-Delete-Key: mysecret</code></p>
 
-			<p>Specify an expiration time (in seconds)<br/>
-			<code>Linx-Expiry: 60</code></p>
+			<p>Protect file with password<br />
+				<code>Linx-Access-Key: mysecret</code></p>
 
-			<p>Get a json response<br/>
-			<code>Accept: application/json</code></p>
+			<p>Specify an expiration time (in seconds)<br />
+				<code>Linx-Expiry: 60</code></p>
+
+			<p>Get a json response<br />
+				<code>Accept: application/json</code></p>
 
 			<p>The json response will then contain:</p>
 
 			<blockquote>
-			<p>“url”: the publicly available upload url<br/>
-			 “direct_url”: the url to access the file directly<br/>
-			 “filename”:   the (optionally generated) filename<br/>
-			 “delete_key”: the (optionally generated) deletion key,<br/>
-			 “expiry”: the unix timestamp at which the file will expire (0 if never)<br/>
-			 “size”: the size in bytes of the file<br/>
-			 “mimetype”:   the guessed mimetype of the file<br/>
-			 “sha256sum”:  the sha256sum of the file,</p>
+				<p>“url”: the publicly available upload url<br />
+					“direct_url”: the url to access the file directly<br />
+					“filename”: the (optionally generated) filename<br />
+					“delete_key”: the (optionally generated) deletion key,<br />
+					“access_key”: the (optionally supplied) access key,<br />
+					“expiry”: the unix timestamp at which the file will expire (0 if never)<br />
+					“size”: the size in bytes of the file<br />
+					“mimetype”: the guessed mimetype of the file<br />
+					“sha256sum”: the sha256sum of the file,</p>
 			</blockquote>
 
 			<p><strong>Examples</strong></p>
 
 			<p>Uploading myphoto.jpg</p>
 
-			{% if using_auth %}
+			{% if auth != "none" %}
 			<pre><code>$ curl -H &#34;Linx-Api-Key: mysecretkey&#34; -T myphoto.jpg {{ siteurl }}upload/  
 {{ siteurl }}{% if not forcerandom %}myphoto.jpg{% else %}7z4h4ut.jpg{% endif %}</code></pre>
 			{% else %}
@@ -66,7 +75,7 @@
 
 			<p>Uploading myphoto.jpg with an expiry of 20 minutes</p>
 
-			{% if using_auth %}
+			{% if auth != "none" %}
 			<pre><code>$ curl -H &#34;Linx-Api-Key: mysecretkey&#34; -H &#34;Linx-Expiry: 1200&#34; -T myphoto.jpg {{ siteurl }}upload/
 {{ siteurl }}{% if not forcerandom %}myphoto.jpg{% else %}jm295snf.jpg{% endif %}</code></pre>
 			{% else %}
@@ -76,7 +85,7 @@
 
 			<p>Uploading myphoto.jpg with a random filename and getting a json response:</p>
 
-			{% if using_auth %}
+			{% if auth != "none" %}
 			<pre><code>$ curl -H &#34;Linx-Api-Key: mysecretkey&#34; -H &#34;Accept: application/json&#34;{% if not forcerandom %} -H &#34;Linx-Randomize: yes&#34;{% endif %} -T myphoto.jpg {{ siteurl }}upload/  
 {&#34;delete_key&#34;:&#34;...&#34;,&#34;expiry&#34;:&#34;0&#34;,&#34;filename&#34;:&#34;f34h4iu.jpg&#34;,&#34;mimetype&#34;:&#34;image/jpeg&#34;,
 &#34;sha256sum&#34;:&#34;...&#34;,&#34;size&#34;:&#34;...&#34;,&#34;url&#34;:&#34;{{ siteurl }}f34h4iu.jpg&#34;}</code></pre>
@@ -88,13 +97,14 @@
 
 			<h3>Overwriting a file</h3>
 
-			<p>To overwrite a file you uploaded, simply provide the <code>Linx-Delete-Key</code> header with the original file's deletion key.</p>
+			<p>To overwrite a file you uploaded, simply provide the <code>Linx-Delete-Key</code> header with the
+				original file's deletion key.</p>
 
 			<p><strong>Example</strong></p>
 
 			<p>To overwrite myphoto.jpg</p>
 
-			{% if using_auth %}
+			{% if auth != "none" %}
 			<pre><code>$ curl -H &#34;Linx-Api-Key: mysecretkey&#34; -H &#34;Linx-Delete-Key: mysecret&#34; -T myphoto.jpg {{ siteurl }}upload/
 {{ siteurl }}myphoto.jpg</code></pre>
 			{% else %}
@@ -104,27 +114,29 @@
 
 			<h3>Deleting a file</h3>
 
-			<p>To delete a file you uploaded, make a DELETE request to <code>{{ siteurl }}yourfile.ext</code>{% if !keyless_delete %} with the delete key set as the <code>Linx-Delete-Key</code> header{% endif %}.</p>
+			<p>To delete a file you uploaded, make a DELETE request to <code>{{ siteurl }}yourfile.ext</code>{% if !keyless_delete %} with the
+				delete key set as the <code>Linx-Delete-Key</code> header{% endif %}.</p>
 
 			<p><strong>Example</strong></p>
 
 			<p>To delete myphoto.jpg</p>
 
-			<pre><code>$ curl{% if using_auth %} -H&#34;Linx-Api-Key: mysecretkey&#34;{% endif %}{% if !keyless_delete %} -H &#34;Linx-Delete-Key: mysecret&#34;{% endif %} -X DELETE {{ siteurl }}myphoto.jpg
+			<pre><code>$ curl{% if auth != "none" %} -H&#34;Linx-Api-Key: mysecretkey&#34;{% endif %}{% if !keyless_delete %} -H &#34;Linx-Delete-Key: mysecret&#34;{% endif %} -X DELETE {{ siteurl }}myphoto.jpg
 DELETED</code></pre>
 
 			<h3>Information about a file</h3>
 
-			<p>To retrieve information about a file, make a GET request the public url with <code>Accept: application/json</code> headers and you will receive a json response containing:</p>
+			<p>To retrieve information about a file, make a GET request the public url with
+				<code>Accept: application/json</code> headers and you will receive a json response containing:</p>
 
 			<blockquote>
-			<p>“url”: the publicly available upload url<br/>
-			 “direct_url”: the url to access the file directly<br/>
-			 “filename”:   the (optionally generated) filename<br/>
-			 “expiry”: the unix timestamp at which the file will expire (0 if never)<br/>
-			 “size”: the size in bytes of the file<br/>
-			 “mimetype”:   the guessed mimetype of the file<br/>
-			 “sha256sum”:  the sha256sum of the file,</p>
+				<p>“url”: the publicly available upload url<br />
+					“direct_url”: the url to access the file directly<br />
+					“filename”: the (optionally generated) filename<br />
+					“expiry”: the unix timestamp at which the file will expire (0 if never)<br />
+					“size”: the size in bytes of the file<br />
+					“mimetype”: the guessed mimetype of the file<br />
+					“sha256sum”: the sha256sum of the file,</p>
 			</blockquote>
 
 			<p><strong>Example</strong></p>
@@ -132,6 +144,6 @@ DELETED</code></pre>
 			<pre><code>$ curl -H &#34;Accept: application/json&#34; {{ siteurl }}myphoto.jpg
 {&#34;expiry&#34;:&#34;0&#34;,&#34;filename&#34;:&#34;myphoto.jpg&#34;,&#34;mimetype&#34;:&#34;image/jpeg&#34;,&#34;sha256sum&#34;:&#34;...&#34;,&#34;size&#34;:&#34;...&#34;}</code></pre>
 		</div>
-    </div>
+	</div>
 </div>
 {% endblock %}

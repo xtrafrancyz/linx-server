@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"io"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -24,6 +23,16 @@ func fileServeHandler(c web.C, w http.ResponseWriter, r *http.Request) {
 		return
 	} else if err != nil {
 		oopsHandler(c, w, r, RespAUTO, "Corrupt metadata.")
+		return
+	}
+
+	if src, err := checkAccessKey(r, &metadata); err != nil {
+		// remove invalid cookie
+		if src == accessKeySourceCookie {
+			setAccessKeyCookies(w, getSiteURL(r), fileName, "", time.Unix(0, 0))
+		}
+		unauthorizedHandler(c, w, r)
+
 		return
 	}
 
@@ -54,15 +63,11 @@ func fileServeHandler(c web.C, w http.ResponseWriter, r *http.Request) {
 	}
 
 	if r.Method != "HEAD" {
-		_, reader, err := storageBackend.Get(fileName)
-		if err != nil {
-			oopsHandler(c, w, r, RespAUTO, "Unable to open file.")
-			return
-		}
-		defer reader.Close()
 
-		if _, err = io.CopyN(w, reader, metadata.Size); err != nil {
+		storageBackend.ServeFile(fileName, w, r)
+		if err != nil {
 			oopsHandler(c, w, r, RespAUTO, err.Error())
+			return
 		}
 	}
 }

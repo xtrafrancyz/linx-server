@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"io"
 	"io/ioutil"
+	"net/http"
 	"os"
 	"path"
 	"time"
@@ -20,6 +21,7 @@ type LocalfsBackend struct {
 type MetadataJSON struct {
 	OriginalName string   `json:"original_name"`
 	DeleteKey    string   `json:"delete_key"`
+	AccessKey    string   `json:"access_key,omitempty"`
 	Sha256sum    string   `json:"sha256sum"`
 	Mimetype     string   `json:"mimetype"`
 	Size         int64    `json:"size"`
@@ -59,6 +61,7 @@ func (b LocalfsBackend) Head(key string) (metadata backends.Metadata, err error)
 
 	metadata.OriginalName = mjson.OriginalName
 	metadata.DeleteKey = mjson.DeleteKey
+	metadata.AccessKey = mjson.AccessKey
 	metadata.Mimetype = mjson.Mimetype
 	metadata.ArchiveFiles = mjson.ArchiveFiles
 	metadata.Sha256sum = mjson.Sha256sum
@@ -82,12 +85,25 @@ func (b LocalfsBackend) Get(key string) (metadata backends.Metadata, f io.ReadCl
 	return
 }
 
+func (b LocalfsBackend) ServeFile(key string, w http.ResponseWriter, r *http.Request) (err error) {
+	_, err = b.Head(key)
+	if err != nil {
+		return
+	}
+
+	filePath := path.Join(b.filesPath, key)
+	http.ServeFile(w, r, filePath)
+
+	return
+}
+
 func (b LocalfsBackend) writeMetadata(key string, metadata backends.Metadata) error {
 	metaPath := path.Join(b.metaPath, key)
 
 	mjson := MetadataJSON{
 		OriginalName: metadata.OriginalName,
 		DeleteKey:    metadata.DeleteKey,
+		AccessKey:    metadata.AccessKey,
 		Mimetype:     metadata.Mimetype,
 		ArchiveFiles: metadata.ArchiveFiles,
 		Sha256sum:    metadata.Sha256sum,
@@ -111,7 +127,7 @@ func (b LocalfsBackend) writeMetadata(key string, metadata backends.Metadata) er
 	return nil
 }
 
-func (b LocalfsBackend) Put(key string, originalName string, r io.Reader, expiry time.Time, deleteKey string) (m backends.Metadata, err error) {
+func (b LocalfsBackend) Put(key, originalName string, r io.Reader, expiry time.Time, deleteKey, accessKey string) (m backends.Metadata, err error) {
 	filePath := path.Join(b.filesPath, key)
 
 	dst, err := os.Create(filePath)
@@ -129,17 +145,32 @@ func (b LocalfsBackend) Put(key string, originalName string, r io.Reader, expiry
 		return m, err
 	}
 
+	dst.Seek(0, 0)
+	m, err = helpers.GenerateMetadata(dst)
+	if err != nil {
+		os.Remove(filePath)
+		return
+	}
+	dst.Seek(0, 0)
+
 	m.OriginalName = originalName
 	m.Expiry = expiry
 	m.DeleteKey = deleteKey
-	m.Size = bytes
-	m.Mimetype, _ = helpers.DetectMime(dst)
-	m.Sha256sum, _ = helpers.Sha256sum(dst)
+	m.AccessKey = accessKey
 	m.ArchiveFiles, _ = helpers.ListArchiveFiles(m.Mimetype, m.Size, dst)
 
 	err = b.writeMetadata(key, m)
 	if err != nil {
 		os.Remove(filePath)
+		return
+	}
+
+	return
+}
+
+func (b LocalfsBackend) PutMetadata(key string, m backends.Metadata) (err error) {
+	err = b.writeMetadata(key, m)
+	if err != nil {
 		return
 	}
 

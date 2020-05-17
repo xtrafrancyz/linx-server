@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/GeertJohan/go.rice"
+	rice "github.com/GeertJohan/go.rice"
 	"github.com/flosch/pongo2"
 )
 
@@ -51,6 +51,8 @@ func populateTemplatesMap(tSet *pongo2.TemplateSet, tMap map[string]*pongo2.Temp
 		"401.html",
 		"404.html",
 		"oops.html",
+		"access.html",
+		"custom_page.html",
 
 		"display/audio.html",
 		"display/image.html",
@@ -84,7 +86,17 @@ func renderTemplate(tpl *pongo2.Template, context pongo2.Context, r *http.Reques
 
 	context["sitepath"] = Config.sitePath
 	context["selifpath"] = Config.selifPath
-	context["using_auth"] = Config.authFile != ""
+	context["custom_pages_names"] = customPagesNames
+
+	var a string
+	if Config.authFile == "" {
+		a = "none"
+	} else if Config.basicAuth {
+		a = "basic"
+	} else {
+		a = "header"
+	}
+	context["auth"] = a
 
 	return tpl.ExecuteWriter(context, writer)
 }

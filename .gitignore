@@ -20,6 +20,8 @@ _cgo_defun.c
 _cgo_gotypes.go
 _cgo_export.*
 
+.DS_Store
+
 _testmain.go
 
 *.exe
@@ -27,7 +29,11 @@ _testmain.go
 *.prof
 
 linx-server
+linx-cleanup/linx-cleanup
+linx-genkey/linx-genkey
+linx-server.conf
 files/
 meta/
 binaries/
-linx-cleanup
+custom_pages/
+authfile

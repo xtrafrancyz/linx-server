@@ -8,15 +8,18 @@ import (
 	"net/http/fcgi"
 	"net/url"
 	"os"
+	"os/signal"
 	"regexp"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
-	"github.com/GeertJohan/go.rice"
+	rice "github.com/GeertJohan/go.rice"
 	"github.com/andreimarcu/linx-server/backends"
 	"github.com/andreimarcu/linx-server/backends/localfs"
 	"github.com/andreimarcu/linx-server/backends/s3"
+	"github.com/andreimarcu/linx-server/cleanup"
 	"github.com/flosch/pongo2"
 	"github.com/vharitonsky/iniflags"
 	"github.com/zenazn/goji/graceful"
@@ -57,6 +60,7 @@ var Config struct {
 	allowHotlink              bool
 	fastcgi                   bool
 	remoteUploads             bool
+	basicAuth                 bool
 	authFile                  string
 	remoteAuthFile            string
 	addHeaders                headerList
@@ -67,6 +71,9 @@ var Config struct {
 	s3ForcePathStyle          bool
 	forceRandomFilename       bool
 	anyoneCanDelete           bool
+	accessKeyCookieExpiry     uint64
+	customPagesDir            string
+	cleanupEveryMinutes       uint64
 }
 
 var Templates = make(map[string]*pongo2.Template)
@@ -77,6 +84,8 @@ var timeStartedStr string
 var remoteAuthKeys []string
 var metaStorageBackend backends.MetaStorageBackend
 var storageBackend backends.StorageBackend
+var customPages = make(map[string]string)
+var customPagesNames = make(map[string]string)
 
 func setup() *web.Mux {
 	mux := web.New()
@@ -144,6 +153,10 @@ func setup() *web.Mux {
 		storageBackend = s3.NewS3Backend(Config.s3Bucket, Config.s3Region, Config.s3Endpoint, Config.s3ForcePathStyle)
 	} else {
 		storageBackend = localfs.NewLocalfsBackend(Config.metaDir, Config.filesDir)
+		if Config.cleanupEveryMinutes > 0 {
+			go cleanup.PeriodicCleanup(time.Duration(Config.cleanupEveryMinutes)*time.Minute, Config.filesDir, Config.metaDir, Config.noLogs)
+		}
+
 	}
 
 	// Template setup
@@ -167,7 +180,7 @@ func setup() *web.Mux {
 	selifIndexRe := regexp.MustCompile("^" + Config.sitePath + Config.selifPath + `$`)
 	torrentRe := regexp.MustCompile("^" + Config.sitePath + `(?P<name>[a-z0-9-\.]+)/torrent$`)
 
-	if Config.authFile == "" {
+	if Config.authFile == "" || Config.basicAuth {
 		mux.Get(Config.sitePath, indexHandler)
 		mux.Get(Config.sitePath+"paste/", pasteHandler)
 	} else {
@@ -188,6 +201,25 @@ func setup() *web.Mux {
 		}
 	}
 
+	if Config.basicAuth {
+		options := AuthOptions{
+			AuthFile:      Config.authFile,
+			UnauthMethods: []string{},
+		}
+		okFunc := func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Location", Config.sitePath)
+			w.WriteHeader(http.StatusFound)
+		}
+		authHandler := auth{
+			successHandler: http.HandlerFunc(okFunc),
+			failureHandler: http.HandlerFunc(badAuthorizationHandler),
+			authKeys:       readAuthKeys(Config.authFile),
+			o:              options,
+		}
+		mux.Head(Config.sitePath+"auth", authHandler)
+		mux.Get(Config.sitePath+"auth", authHandler)
+	}
+
 	mux.Post(Config.sitePath+"upload", uploadPostHandler)
 	mux.Post(Config.sitePath+"upload/", uploadPostHandler)
 	mux.Put(Config.sitePath+"upload", uploadPutHandler)
@@ -199,10 +231,19 @@ func setup() *web.Mux {
 	mux.Get(Config.sitePath+"static/*", staticHandler)
 	mux.Get(Config.sitePath+"favicon.ico", staticHandler)
 	mux.Get(Config.sitePath+"robots.txt", staticHandler)
-	mux.Get(nameRe, fileDisplayHandler)
+	mux.Get(nameRe, fileAccessHandler)
+	mux.Post(nameRe, fileAccessHandler)
 	mux.Get(selifRe, fileServeHandler)
 	mux.Get(selifIndexRe, unauthorizedHandler)
 	mux.Get(torrentRe, fileTorrentHandler)
+
+	if Config.customPagesDir != "" {
+		initializeCustomPages(Config.customPagesDir)
+		for fileName := range customPagesNames {
+			mux.Get(Config.sitePath+fileName, makeCustomPageHandler(fileName))
+			mux.Get(Config.sitePath+fileName+"/", makeCustomPageHandler(fileName))
+		}
+	}
 
 	mux.NotFound(notFoundHandler)
 
@@ -216,6 +257,8 @@ func main() {
 		"path to files directory")
 	flag.StringVar(&Config.metaDir, "metapath", "meta/",
 		"path to metadata directory")
+	flag.BoolVar(&Config.basicAuth, "basicauth", false,
+		"allow logging by basic auth password")
 	flag.BoolVar(&Config.noLogs, "nologs", false,
 		"remove stdout output for each request")
 	flag.BoolVar(&Config.allowHotlink, "allowhotlink", false,
@@ -274,13 +317,38 @@ func main() {
 		"Force all uploads to use a random filename")
 	flag.BoolVar(&Config.anyoneCanDelete, "anyone-can-delete", false,
 		"Anyone has delete button on the file page")
+	flag.Uint64Var(&Config.accessKeyCookieExpiry, "access-cookie-expiry", 0, "Expiration time for access key cookies in seconds (set 0 to use session cookies)")
+	flag.StringVar(&Config.customPagesDir, "custompagespath", "",
+		"path to directory containing .md files to render as custom pages")
+	flag.Uint64Var(&Config.cleanupEveryMinutes, "cleanup-every-minutes", 0,
+		"How often to clean up expired files in minutes (default is 0, which means files will be cleaned up as they are accessed)")
 
 	iniflags.Parse()
 
 	mux := setup()
 
 	if Config.fastcgi {
-		listener, err := net.Listen("tcp", Config.bind)
+		var listener net.Listener
+		var err error
+		if Config.bind[0] == '/' {
+			// UNIX path
+			listener, err = net.ListenUnix("unix", &net.UnixAddr{Name: Config.bind, Net: "unix"})
+			cleanup := func() {
+				log.Print("Removing FastCGI socket")
+				os.Remove(Config.bind)
+			}
+			defer cleanup()
+			sigs := make(chan os.Signal, 1)
+			signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+			go func() {
+				sig := <-sigs
+				log.Print("Signal: ", sig)
+				cleanup()
+				os.Exit(0)
+			}()
+		} else {
+			listener, err = net.Listen("tcp", Config.bind)
+		}
 		if err != nil {
 			log.Fatal("Could not bind: ", err)
 		}

@@ -3,6 +3,7 @@ package backends
 import (
 	"errors"
 	"io"
+	"net/http"
 	"time"
 )
 
@@ -11,7 +12,9 @@ type StorageBackend interface {
 	Exists(key string) (bool, error)
 	Head(key string) (Metadata, error)
 	Get(key string) (Metadata, io.ReadCloser, error)
-	Put(key string, originalName string, r io.Reader, expiry time.Time, deleteKey string) (Metadata, error)
+	Put(key, originalName string, r io.Reader, expiry time.Time, deleteKey, accessKey string) (Metadata, error)
+	PutMetadata(key string, m Metadata) error
+	ServeFile(key string, w http.ResponseWriter, r *http.Request) error
 	Size(key string) (int64, error)
 }
 

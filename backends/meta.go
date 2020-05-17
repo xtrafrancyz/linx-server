@@ -8,6 +8,7 @@ import (
 type Metadata struct {
 	OriginalName string
 	DeleteKey    string
+	AccessKey    string
 	Sha256sum    string
 	Mimetype     string
 	Size         int64
