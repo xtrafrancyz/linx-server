@@ -52,6 +52,16 @@ Dropzone.options.dropzone = {
         file.uploadElement = upload;
 
         document.getElementById("uploads").appendChild(upload);
+
+        for (var i=0; i<this.files.length && this.files.length > 1; i++) {
+            var f = this.files[i];
+            if (f.status === "queued" || f.status === "added")
+                f.fileLabel.parentElement.remove();
+            if (f.status !== "uploading") {
+                this.removeFile(f);
+                i--;
+            }
+        }
     },
     uploadprogress: function (file, p, bytesSent) {
         p = parseInt(p);
@@ -124,10 +134,11 @@ Dropzone.options.dropzone = {
     autoProcessQueue: document.getElementById("dropzone").getAttribute("data-auth") !== "basic",
     maxFilesize: Math.round(parseInt(document.getElementById("dropzone").getAttribute("data-maxsize"), 10) / 1024 / 1024),
     previewsContainer: "#uploads",
-    parallelUploads: 5,
+    parallelUploads: 1,
     headers: { "Accept": "application/json" },
     dictDefaultMessage: "Click or Drop file(s) or Paste image",
-    dictFallbackMessage: ""
+    dictFallbackMessage: "",
+    maxFiles: 1
 };
 
 document.onpaste = function (event) {
