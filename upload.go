@@ -318,7 +318,7 @@ func processUpload(upReq UploadRequest) (upload Upload, err error) {
 }
 
 func generateBarename() string {
-	return uniuri.NewLenChars(8, []byte("abcdefghijklmnopqrstuvwxyz0123456789"))
+	return uniuri.NewLenChars(10, []byte("abcdefghijklmnopqrstuvwxyz0123456789"))
 }
 
 func generateJSONresponse(upload Upload, r *http.Request) []byte {
