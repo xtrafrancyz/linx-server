@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -64,7 +65,7 @@ func fileServeHandler(c web.C, w http.ResponseWriter, r *http.Request) {
 
 	if r.Method != "HEAD" {
 
-		storageBackend.ServeFile(fileName, w, r)
+		err = storageBackend.ServeFile(fileName, w, r)
 		if err != nil {
 			oopsHandler(c, w, r, RespAUTO, err.Error())
 			return
@@ -83,7 +84,7 @@ func staticHandler(c web.C, w http.ResponseWriter, r *http.Request) {
 		}
 
 		filePath := strings.TrimPrefix(path, Config.sitePath+"static/")
-		file, err := staticBox.Open(filePath)
+		file, err := staticEmbed.Open("static/" + filePath)
 		if err != nil {
 			notFoundHandler(c, w, r)
 			return
@@ -91,7 +92,7 @@ func staticHandler(c web.C, w http.ResponseWriter, r *http.Request) {
 
 		w.Header().Set("Etag", fmt.Sprintf("\"%s\"", timeStartedStr))
 		w.Header().Set("Cache-Control", "public, max-age=86400")
-		http.ServeContent(w, r, filePath, timeStarted, file)
+		http.ServeContent(w, r, filePath, timeStarted, file.(io.ReadSeeker))
 		return
 	}
 }

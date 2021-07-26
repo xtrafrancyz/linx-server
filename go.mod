@@ -1,9 +1,8 @@
 module github.com/andreimarcu/linx-server
 
-go 1.14
+go 1.16
 
 require (
-	github.com/GeertJohan/go.rice v1.0.0
 	github.com/aws/aws-sdk-go v1.29.19
 	github.com/dchest/uniuri v0.0.0-20200228104902-7aecb25e1fe5
 	github.com/dustin/go-humanize v1.0.0

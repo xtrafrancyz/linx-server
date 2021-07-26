@@ -1,4 +1,4 @@
-FROM golang:1.14-alpine3.11 AS build
+FROM golang:1.16.6-alpine3.14 AS build
 
 COPY . /go/src/github.com/andreimarcu/linx-server
 WORKDIR /go/src/github.com/andreimarcu/linx-server
@@ -8,7 +8,7 @@ RUN set -ex \
         && go get -v . \
         && apk del .build-deps
 
-FROM alpine:3.11
+FROM alpine:3.14
 
 COPY --from=build /go/bin/linx-server /usr/local/bin/linx-server
 

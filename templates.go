@@ -8,28 +8,18 @@ import (
 	"path/filepath"
 	"strings"
 
-	rice "github.com/GeertJohan/go.rice"
 	"github.com/flosch/pongo2"
 )
 
 type Pongo2Loader struct {
-	box *rice.Box
 }
 
 func NewPongo2TemplatesLoader() (*Pongo2Loader, error) {
-	fs := &Pongo2Loader{}
-
-	p2l, err := rice.FindBox("templates")
-	if err != nil {
-		return nil, err
-	}
-
-	fs.box = p2l
-	return fs, nil
+	return &Pongo2Loader{}, nil
 }
 
 func (fs *Pongo2Loader) Get(path string) (io.Reader, error) {
-	myBytes, err := fs.box.Bytes(path)
+	myBytes, err := staticEmbed.ReadFile("templates/" + path)
 	if err != nil {
 		return nil, err
 	}

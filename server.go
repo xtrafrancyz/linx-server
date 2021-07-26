@@ -1,6 +1,7 @@
 package main
 
 import (
+	"embed"
 	"flag"
 	"log"
 	"net"
@@ -15,7 +16,6 @@ import (
 	"syscall"
 	"time"
 
-	rice "github.com/GeertJohan/go.rice"
 	"github.com/andreimarcu/linx-server/backends"
 	"github.com/andreimarcu/linx-server/backends/localfs"
 	"github.com/andreimarcu/linx-server/backends/s3"
@@ -76,13 +76,13 @@ var Config struct {
 	cleanupEveryMinutes       uint64
 }
 
+//go:embed static templates
+var staticEmbed embed.FS
+
 var Templates = make(map[string]*pongo2.Template)
-var TemplateSet *pongo2.TemplateSet
-var staticBox *rice.Box
 var timeStarted time.Time
 var timeStartedStr string
 var remoteAuthKeys []string
-var metaStorageBackend backends.MetaStorageBackend
 var storageBackend backends.StorageBackend
 var customPages = make(map[string]string)
 var customPagesNames = make(map[string]string)
@@ -170,7 +170,6 @@ func setup() *web.Mux {
 		log.Fatal("Error: could not load templates", err)
 	}
 
-	staticBox = rice.MustFindBox("static")
 	timeStarted = time.Now()
 	timeStartedStr = strconv.FormatInt(timeStarted.Unix(), 10)
 
