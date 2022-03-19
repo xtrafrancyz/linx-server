@@ -17,7 +17,7 @@ function handleTab(ev) {
 
 (function () {
     var elem = document.getElementById("delete");
-    if (elem !== undefined) {
+    if (elem) {
         elem.addEventListener("click", function (ev) {
             var xhr = new XMLHttpRequest();
             xhr.open("DELETE", document.location.pathname, true);
