@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/andreimarcu/linx-server/backends"
-	"github.com/flosch/pongo2"
+	"github.com/flosch/pongo2/v5"
 	"github.com/zenazn/goji/web"
 )
 

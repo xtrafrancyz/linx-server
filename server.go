@@ -20,7 +20,7 @@ import (
 	"github.com/andreimarcu/linx-server/backends/localfs"
 	"github.com/andreimarcu/linx-server/backends/s3"
 	"github.com/andreimarcu/linx-server/cleanup"
-	"github.com/flosch/pongo2"
+	"github.com/flosch/pongo2/v5"
 	"github.com/vharitonsky/iniflags"
 	"github.com/zenazn/goji/graceful"
 	"github.com/zenazn/goji/web"

@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/flosch/pongo2"
+	"github.com/flosch/pongo2/v5"
 )
 
 type Pongo2Loader struct {

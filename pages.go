@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/flosch/pongo2"
+	"github.com/flosch/pongo2/v5"
 	"github.com/zenazn/goji/web"
 )
 
