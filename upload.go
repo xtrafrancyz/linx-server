@@ -19,6 +19,7 @@ import (
 	"github.com/andreimarcu/linx-server/expiry"
 	"github.com/dchest/uniuri"
 	"github.com/gabriel-vasile/mimetype"
+	"github.com/microcosm-cc/bluemonday"
 	"github.com/zenazn/goji/web"
 )
 
@@ -244,6 +245,10 @@ func processUpload(upReq UploadRequest) (upload Upload, err error) {
 	if upReq.size > Config.maxSize {
 		return upload, FileTooLargeError
 	}
+	if len(upReq.filename) > 255 {
+		return upload, errors.New("filename too large")
+	}
+	upReq.filename = bluemonday.StrictPolicy().Sanitize(upReq.filename)
 
 	// Determine the appropriate filename
 	barename, extension := barePlusExt(upReq.filename)

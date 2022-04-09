@@ -17,8 +17,8 @@
         {% endif %}
         {% block infomore %}{% endblock %}
         <span>{{ size }}</span> |
-        <a href="{{ filename }}/torrent" download>torrent</a> |
-        <a href="{{ sitepath }}{{ selifpath }}{{ filename }}" download>get</a>
+        <a id="curl" href="#">curl</a> |
+        <a id="download" href="{{ sitepath }}{{ selifpath }}{{ filename }}" download>get</a>
         {% if keyless_delete %}
         | <a id="delete" href="#">delete</a>
         {% endif %}
@@ -35,6 +35,5 @@
 
 </div>
 
-<script src="{{ sitepath }}static/js/util.js?v=3"></script>
-<script src="{{ sitepath }}static/js/clipboard.js"></script>
+<script src="{{ sitepath }}static/js/util.js?v=4"></script>
 {% endblock %}
