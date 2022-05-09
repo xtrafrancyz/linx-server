@@ -35,7 +35,7 @@ Getting started
 Example running
 
 ```
-docker run -p 8080:8080 -v /path/to/linx-server.conf:/data/linx-server.conf -v /path/to/meta:/data/meta -v /path/to/files:/data/files andreimarcu/linx-server -config /data/linx-server.conf
+docker run -p 8080:8080 -v /path/to/linx-server.conf:/data/linx-server.conf -v /path/to/meta:/data/meta -v /path/to/files:/data/files xtrafrancyz/linx-server -config /data/linx-server.conf
 ``` 
 
 Example with docker-compose
@@ -45,7 +45,7 @@ version: '2.2'
 services:
   linx-server:
     container_name: linx-server
-    image: andreimarcu/linx-server
+    image: xtrafrancyz/linx-server
     entrypoint: /usr/local/bin/linx-server 
     command: -config /data/linx-server.conf
     volumes:
