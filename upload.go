@@ -252,7 +252,6 @@ func processUpload(upReq UploadRequest) (upload Upload, err error) {
 
 	// Determine the appropriate filename
 	barename, extension := barePlusExt(upReq.filename)
-	slug := generateBarename()
 
 	var header []byte
 	if len(extension) == 0 {
@@ -273,25 +272,16 @@ func processUpload(upReq UploadRequest) (upload Upload, err error) {
 		}
 	}
 
-	upload.Filename = strings.Join([]string{slug, extension}, ".")
-	upload.Filename = strings.Replace(upload.Filename, " ", "", -1)
-
-	fileexists, _ := storageBackend.Exists(upload.Filename)
-
-	// Check if the delete key matches, in which case overwrite
-	if fileexists {
-		metad, merr := storageBackend.Head(upload.Filename)
-		if merr == nil {
-			if upReq.deleteKey == metad.DeleteKey {
-				fileexists = false
-			}
-		}
-	}
-
-	for fileexists {
-		slug = generateBarename()
+	for {
+		slug := generateBarename()
 		upload.Filename = strings.Join([]string{slug, extension}, ".")
-		fileexists, err = storageBackend.Exists(upload.Filename)
+		exists, err := storageBackend.Exists(upload.Filename)
+		if err != nil {
+			return upload, err
+		}
+		if !exists {
+			break
+		}
 	}
 
 	if fileBlacklist[strings.ToLower(upload.Filename)] {

@@ -2,6 +2,7 @@ package localfs
 
 import (
 	"encoding/json"
+	"errors"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -40,7 +41,13 @@ func (b LocalfsBackend) Delete(key string) (err error) {
 
 func (b LocalfsBackend) Exists(key string) (bool, error) {
 	_, err := os.Stat(path.Join(b.filesPath, key))
-	return err == nil, err
+	if err == nil {
+		return true, nil
+	} else if errors.Is(err, os.ErrNotExist) {
+		return false, nil
+	} else {
+		return false, err
+	}
 }
 
 func (b LocalfsBackend) Head(key string) (metadata backends.Metadata, err error) {
