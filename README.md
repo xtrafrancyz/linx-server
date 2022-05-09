@@ -1,6 +1,6 @@
 linx-server
 ======
-[![Build Status](https://travis-ci.org/xtrafrancyz/linx-server.svg?branch=master)](https://travis-ci.org/xtrafrancyz/linx-server)
+[![Build Status](https://travis-ci.com/xtrafrancyz/linx-server.svg?branch=master)](https://travis-ci.com/xtrafrancyz/linx-server)
 
 Self-hosted file/media sharing website.
 
