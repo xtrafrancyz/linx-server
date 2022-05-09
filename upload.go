@@ -40,8 +40,7 @@ type UploadRequest struct {
 	filename  string
 	expiry    time.Duration // Seconds until expiry, 0 = never
 	deleteKey string        // Empty string if not defined
-	randomize bool
-	accessKey string // Empty string if not defined
+	accessKey string        // Empty string if not defined
 }
 
 // Metadata associated with a file as it would actually be stored
@@ -51,7 +50,7 @@ type Upload struct {
 }
 
 func uploadPostHandler(c web.C, w http.ResponseWriter, r *http.Request) {
-	if !strictReferrerCheck(r, getSiteURL(r), []string{"Linx-Delete-Key", "Linx-Expiry", "Linx-Randomize", "X-Requested-With"}) {
+	if !strictReferrerCheck(r, getSiteURL(r), []string{"Linx-Delete-Key", "Linx-Expiry", "X-Requested-With"}) {
 		badRequestHandler(c, w, r, RespAUTO, "")
 		return
 	}
@@ -94,10 +93,6 @@ func uploadPostHandler(c web.C, w http.ResponseWriter, r *http.Request) {
 
 	upReq.expiry = parseExpiry(r.PostFormValue("expires"))
 	upReq.accessKey = r.PostFormValue(accessKeyParamName)
-
-	if r.PostFormValue("randomize") == "true" {
-		upReq.randomize = true
-	}
 
 	upload, err := processUpload(upReq)
 
@@ -200,7 +195,6 @@ func uploadRemote(c web.C, w http.ResponseWriter, r *http.Request) {
 	upReq.src = http.MaxBytesReader(w, resp.Body, Config.maxSize)
 	upReq.deleteKey = r.FormValue("deletekey")
 	upReq.accessKey = r.FormValue(accessKeyParamName)
-	upReq.randomize = r.FormValue("randomize") == "yes"
 	upReq.expiry = parseExpiry(r.FormValue("expiry"))
 
 	upload, err := processUpload(upReq)
@@ -229,10 +223,6 @@ func uploadRemote(c web.C, w http.ResponseWriter, r *http.Request) {
 }
 
 func uploadHeaderProcess(r *http.Request, upReq *UploadRequest) {
-	if r.Header.Get("Linx-Randomize") == "yes" {
-		upReq.randomize = true
-	}
-
 	upReq.deleteKey = r.Header.Get("Linx-Delete-Key")
 	upReq.accessKey = r.Header.Get(accessKeyHeaderName)
 
@@ -300,7 +290,7 @@ func processUpload(upReq UploadRequest) (upload Upload, err error) {
 		upReq.deleteKey = uniuri.NewLen(30)
 	}
 
-	if Config.forceRandomFilename || upReq.randomize || len(barename) == 0 {
+	if len(barename) == 0 {
 		upReq.filename = upload.Filename
 	}
 

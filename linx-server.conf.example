@@ -8,5 +8,4 @@ maxexpiry = 86400
 allowhotlink = true
 remoteuploads = true
 nologs = true
-force-random-filename = false
 cleanup-every-minutes = 5

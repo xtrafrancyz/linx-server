@@ -575,58 +575,6 @@ func TestPostExpiresJSONUpload(t *testing.T) {
 	}
 }
 
-func TestPostRandomizeJSONUpload(t *testing.T) {
-	mux := setup()
-	w := httptest.NewRecorder()
-
-	filename := generateBarename() + ".txt"
-
-	var b bytes.Buffer
-	mw := multipart.NewWriter(&b)
-	fw, err := mw.CreateFormFile("file", filename)
-	if err != nil {
-		t.Fatal(err)
-	}
-	fw.Write([]byte("File content"))
-
-	rnd, err := mw.CreateFormField("randomize")
-	if err != nil {
-		t.Fatal(err)
-	}
-	rnd.Write([]byte("true"))
-
-	mw.Close()
-
-	req, err := http.NewRequest("POST", "/upload/", &b)
-	req.Header.Set("Content-Type", mw.FormDataContentType())
-	req.Header.Set("Accept", "application/json")
-	req.Header.Set("Referer", Config.siteURL)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	mux.ServeHTTP(w, req)
-
-	if w.Code != 200 {
-		t.Log(w.Body.String())
-		t.Fatalf("Status code is not 200, but %d", w.Code)
-	}
-
-	var myjson RespOkJSON
-	err = json.Unmarshal([]byte(w.Body.String()), &myjson)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if myjson.Original_Name == filename {
-		t.Fatalf("Filename (%s) is not random (%s)", filename, myjson.Original_Name)
-	}
-
-	if myjson.Size != "12" {
-		t.Fatalf("File size was not 12 but %s", myjson.Size)
-	}
-}
-
 func TestPostEmptyUpload(t *testing.T) {
 	mux := setup()
 	w := httptest.NewRecorder()
@@ -753,52 +701,6 @@ func TestPutUpload(t *testing.T) {
 	}
 }
 
-func TestPutRandomizedUpload(t *testing.T) {
-	mux := setup()
-	w := httptest.NewRecorder()
-
-	filename := generateBarename() + ".file"
-
-	req, err := http.NewRequest("PUT", "/upload/"+filename, strings.NewReader("File content"))
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	req.Header.Set("Linx-Randomize", "yes")
-
-	mux.ServeHTTP(w, req)
-
-	if w.Body.String() == Config.siteURL+filename {
-		t.Fatal("Filename was not random")
-	}
-}
-
-func TestPutForceRandomUpload(t *testing.T) {
-	mux := setup()
-	w := httptest.NewRecorder()
-
-	oldFRF := Config.forceRandomFilename
-	Config.forceRandomFilename = true
-	filename := "randomizeme.file"
-
-	req, err := http.NewRequest("PUT", "/upload/"+filename, strings.NewReader("File content"))
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// while this should also work without this header, let's try to force
-	// the randomized filename off to be sure
-	req.Header.Set("Linx-Randomize", "no")
-
-	mux.ServeHTTP(w, req)
-
-	if w.Body.String() == Config.siteURL+filename {
-		t.Fatal("Filename was not random")
-	}
-
-	Config.forceRandomFilename = oldFRF
-}
-
 func TestPutNoExtensionUpload(t *testing.T) {
 	mux := setup()
 	w := httptest.NewRecorder()
@@ -809,8 +711,6 @@ func TestPutNoExtensionUpload(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	req.Header.Set("Linx-Randomize", "yes")
 
 	mux.ServeHTTP(w, req)
 
@@ -829,8 +729,6 @@ func TestPutEmptyUpload(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	req.Header.Set("Linx-Randomize", "yes")
 
 	mux.ServeHTTP(w, req)
 
@@ -852,8 +750,6 @@ func TestPutTooLargeUpload(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	req.Header.Set("Linx-Randomize", "yes")
 
 	mux.ServeHTTP(w, req)
 
@@ -893,34 +789,6 @@ func TestPutJSONUpload(t *testing.T) {
 
 	if myjson.Original_Name != filename {
 		t.Fatal("Filename was not provided one but " + myjson.Original_Name)
-	}
-}
-
-func TestPutRandomizedJSONUpload(t *testing.T) {
-	var myjson RespOkJSON
-
-	mux := setup()
-	w := httptest.NewRecorder()
-
-	filename := generateBarename() + ".file"
-
-	req, err := http.NewRequest("PUT", "/upload/"+filename, strings.NewReader("File content"))
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	req.Header.Set("Accept", "application/json")
-	req.Header.Set("Linx-Randomize", "yes")
-
-	mux.ServeHTTP(w, req)
-
-	err = json.Unmarshal([]byte(w.Body.String()), &myjson)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if myjson.Original_Name == filename {
-		t.Fatal("Filename was not random ")
 	}
 }
 

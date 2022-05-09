@@ -18,12 +18,16 @@
         </div>
 
         <div id="choices">
-            <span class="hint--top hint--bounce"
-                data-hint="Replace the filename with random characters. The file extension is retained">
-                <label><input {% if forcerandom %} disabled {% endif %} name="randomize" id="randomize" type="checkbox"
-                        /> Randomize filename</label>
-            </span>
-
+            <div id="access_key">
+                <span class="hint--top hint--bounce"
+                      data-hint="Require password to access (this does not encrypt the file but only limits access)">
+                    <label>
+                        <input type="checkbox" id="access_key_checkbox" />
+                        <span id="access_key_text">Require access password</span>
+                    </label>
+                    <input id="access_key_input" name="access_key" type="text" placeholder="Access password" />
+                </span>
+            </div>
             <div id="expiry">
                 <label>File expiry:
                     <select name="expires" id="expires">
@@ -33,16 +37,6 @@
                         {% endfor %}
                     </select>
                 </label>
-            </div>
-            <div id="access_key">
-                <span class="hint--top hint--bounce"
-                    data-hint="Require password to access (this does not encrypt the file but only limits access)">
-                    <label>
-                        <input type="checkbox" id="access_key_checkbox" />
-                        <span id="access_key_text">Require access password</span>
-                    </label>
-                    <input id="access_key_input" name="access_key" type="text" placeholder="Access password" />
-                </span>
             </div>
         </div>
         <div class="clear"></div>

@@ -266,13 +266,7 @@ body {
   padding-top: 1px;
 }
 
-#randomize {
-  vertical-align: bottom;
-  margin: 0;
-}
-
 #access_key {
-  min-width: 100%;
   line-height: 1.3em;
 }
 

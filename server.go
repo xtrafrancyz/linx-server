@@ -69,7 +69,6 @@ var Config struct {
 	s3Region                  string
 	s3Bucket                  string
 	s3ForcePathStyle          bool
-	forceRandomFilename       bool
 	anyoneCanDelete           bool
 	accessKeyCookieExpiry     uint64
 	customPagesDir            string
@@ -312,8 +311,6 @@ func main() {
 		"S3 bucket to use for files and metadata")
 	flag.BoolVar(&Config.s3ForcePathStyle, "s3-force-path-style", false,
 		"Force path-style addressing for S3 (e.g. https://s3.amazonaws.com/linx/example.txt)")
-	flag.BoolVar(&Config.forceRandomFilename, "force-random-filename", false,
-		"Force all uploads to use a random filename")
 	flag.BoolVar(&Config.anyoneCanDelete, "anyone-can-delete", false,
 		"Anyone has delete button on the file page")
 	flag.Uint64Var(&Config.accessKeyCookieExpiry, "access-cookie-expiry", 0, "Expiration time for access key cookies in seconds (set 0 to use session cookies)")

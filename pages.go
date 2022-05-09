@@ -21,9 +21,8 @@ const (
 
 func indexHandler(c web.C, w http.ResponseWriter, r *http.Request) {
 	err := renderTemplate(Templates["index.html"], pongo2.Context{
-		"maxsize":     Config.maxSize,
-		"expirylist":  listExpirationTimes(),
-		"forcerandom": Config.forceRandomFilename,
+		"maxsize":    Config.maxSize,
+		"expirylist": listExpirationTimes(),
 	}, r, w)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -32,8 +31,7 @@ func indexHandler(c web.C, w http.ResponseWriter, r *http.Request) {
 
 func pasteHandler(c web.C, w http.ResponseWriter, r *http.Request) {
 	err := renderTemplate(Templates["paste.html"], pongo2.Context{
-		"expirylist":  listExpirationTimes(),
-		"forcerandom": Config.forceRandomFilename,
+		"expirylist": listExpirationTimes(),
 	}, r, w)
 	if err != nil {
 		oopsHandler(c, w, r, RespHTML, "")
@@ -43,7 +41,6 @@ func pasteHandler(c web.C, w http.ResponseWriter, r *http.Request) {
 func apiDocHandler(c web.C, w http.ResponseWriter, r *http.Request) {
 	err := renderTemplate(Templates["API.html"], pongo2.Context{
 		"siteurl":        getSiteURL(r),
-		"forcerandom":    Config.forceRandomFilename,
 		"keyless_delete": Config.anyoneCanDelete,
 	}, r, w)
 	if err != nil {
@@ -54,11 +51,10 @@ func apiDocHandler(c web.C, w http.ResponseWriter, r *http.Request) {
 func makeCustomPageHandler(fileName string) func(c web.C, w http.ResponseWriter, r *http.Request) {
 	return func(c web.C, w http.ResponseWriter, r *http.Request) {
 		err := renderTemplate(Templates["custom_page.html"], pongo2.Context{
-			"siteurl":     getSiteURL(r),
-			"forcerandom": Config.forceRandomFilename,
-			"contents":    customPages[fileName],
-			"filename":    fileName,
-			"pagename":    customPagesNames[fileName],
+			"siteurl":  getSiteURL(r),
+			"contents": customPages[fileName],
+			"filename": fileName,
+			"pagename": customPagesNames[fileName],
 		}, r, w)
 		if err != nil {
 			oopsHandler(c, w, r, RespHTML, "")

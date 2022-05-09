@@ -131,7 +131,6 @@ func fileDisplayHandler(c web.C, w http.ResponseWriter, r *http.Request, fileNam
 		"expiry":         expiryHuman,
 		"expirylist":     listExpirationTimes(),
 		"extra":          extra,
-		"forcerandom":    Config.forceRandomFilename,
 		"lines":          lines,
 		"files":          metadata.ArchiveFiles,
 		"siteurl":        strings.TrimSuffix(getSiteURL(r), "/"),

@@ -14,7 +14,7 @@
         <form id="reply" action='{{ sitepath }}upload' method='post'>
             <div class="info-flex">
                 <div>
-                {% if not forcerandom %}<input class="codebox" name='filename' id="filename" type='text' value="" placeholder="filename">{% endif %}.<input id="extension" class="codebox" name='extension' type='text' value="{{ extra.extension }}" placeholder="txt">
+                <input class="codebox" name='filename' id="filename" type='text' value="" placeholder="filename">.<input id="extension" class="codebox" name='extension' type='text' value="{{ extra.extension }}" placeholder="txt">
                 </div>
                 <div class="info-actions">
                     <select id="expiry" name="expires">
