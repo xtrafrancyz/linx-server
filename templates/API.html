@@ -35,8 +35,10 @@
 				<code>Linx-Randomize: yes</code></p>
 			{% endif %}
 
+			{% if !keyless_delete %}
 			<p>Specify a custom deletion key<br />
 				<code>Linx-Delete-Key: mysecret</code></p>
+			{% endif %}
 
 			<p>Protect file with password<br />
 				<code>Linx-Access-Key: mysecret</code></p>
@@ -52,9 +54,12 @@
 			<blockquote>
 				<p>“url”: the publicly available upload url<br />
 					“direct_url”: the url to access the file directly<br />
-					“filename”: the (optionally generated) filename<br />
+					“filename”: the random filename<br />
+					{% if !keyless_delete %}
 					“delete_key”: the (optionally generated) deletion key,<br />
+					{% endif %}
 					“access_key”: the (optionally supplied) access key,<br />
+					“original_name”: the name of the original file,<br />
 					“expiry”: the unix timestamp at which the file will expire (0 if never)<br />
 					“size”: the size in bytes of the file<br />
 					“mimetype”: the guessed mimetype of the file<br />
@@ -115,7 +120,8 @@ DELETED</code></pre>
 			<blockquote>
 				<p>“url”: the publicly available upload url<br />
 					“direct_url”: the url to access the file directly<br />
-					“filename”: the (optionally generated) filename<br />
+					“filename”: the random filename<br />
+					"original_name": the name of the original file<br />
 					“expiry”: the unix timestamp at which the file will expire (0 if never)<br />
 					“size”: the size in bytes of the file<br />
 					“mimetype”: the guessed mimetype of the file<br />
