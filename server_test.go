@@ -4,13 +4,13 @@ import (
 	"bytes"
 	"crypto/tls"
 	"encoding/json"
-	"fmt"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"os"
 	"path"
+	"runtime"
 	"strconv"
 	"strings"
 	"testing"
@@ -18,11 +18,12 @@ import (
 )
 
 type RespOkJSON struct {
-	Filename   string
-	Url        string
-	Delete_Key string
-	Expiry     string
-	Size       string
+	Filename      string
+	Url           string
+	Delete_Key    string
+	Expiry        string
+	Size          string
+	Original_Name string
 }
 
 type RespErrJSON struct {
@@ -111,7 +112,11 @@ func TestAddHeader(t *testing.T) {
 }
 
 func TestAuthKeys(t *testing.T) {
-	Config.authFile = "/dev/null"
+	if runtime.GOOS == "windows" {
+		Config.authFile = "nul"
+	} else {
+		Config.authFile = "/dev/null"
+	}
 
 	redirects := []string{
 		"/",
@@ -229,8 +234,17 @@ func TestPostCodeUpload(t *testing.T) {
 		t.Fatalf("Status code is not 303, but %d", w.Code)
 	}
 
-	if w.Header().Get("Location") != "/"+filename+"."+extension {
-		t.Fatalf("Was redirected to %s instead of /%s", w.Header().Get("Location"), filename)
+	req, err = http.NewRequest("GET", w.Header().Get("Location"), nil)
+	req.Header.Set("User-Agent", "wget")
+	w = httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != 200 {
+		t.Fatal("Status code is not 200, but " + strconv.Itoa(w.Code))
+	}
+
+	if w.Header().Get("Content-Disposition") != "attachment; filename=\""+filename+"."+extension+"\"" {
+		t.Fatalf("Invalid original name %s, expected %s", w.Header().Get("Content-Disposition"), filename)
 	}
 }
 
@@ -390,10 +404,6 @@ func TestPostUpload(t *testing.T) {
 	if w.Code != 303 {
 		t.Fatalf("Status code is not 303, but %d", w.Code)
 	}
-
-	if w.Header().Get("Location") != "/"+filename {
-		t.Fatalf("Was redirected to %s instead of /%s", w.Header().Get("Location"), filename)
-	}
 }
 
 func TestPostJSONUpload(t *testing.T) {
@@ -433,8 +443,8 @@ func TestPostJSONUpload(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if myjson.Filename != filename {
-		t.Fatalf("Filename is not '%s' but '%s' ", filename, myjson.Filename)
+	if myjson.Original_Name != filename {
+		t.Fatalf("Filename is not '%s' but '%s' ", filename, myjson.Original_Name)
 	}
 
 	if myjson.Expiry != "0" {
@@ -546,8 +556,8 @@ func TestPostExpiresJSONUpload(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if myjson.Filename != filename {
-		t.Fatalf("Filename is not '%s' but '%s' ", filename, myjson.Filename)
+	if myjson.Original_Name != filename {
+		t.Fatalf("Filename is not '%s' but '%s' ", filename, myjson.Original_Name)
 	}
 
 	myExp, err := strconv.ParseInt(myjson.Expiry, 10, 64)
@@ -608,8 +618,8 @@ func TestPostRandomizeJSONUpload(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if myjson.Filename == filename {
-		t.Fatalf("Filename (%s) is not random (%s)", filename, myjson.Filename)
+	if myjson.Original_Name == filename {
+		t.Fatalf("Filename (%s) is not random (%s)", filename, myjson.Original_Name)
 	}
 
 	if myjson.Size != "12" {
@@ -738,7 +748,7 @@ func TestPutUpload(t *testing.T) {
 
 	mux.ServeHTTP(w, req)
 
-	if w.Body.String() != fmt.Sprintf("%s\n", Config.siteURL+filename) {
+	if strings.HasPrefix(w.Body.String(), Config.siteURL+"/") {
 		t.Fatal("Response was not expected URL")
 	}
 }
@@ -881,8 +891,8 @@ func TestPutJSONUpload(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if myjson.Filename != filename {
-		t.Fatal("Filename was not provided one but " + myjson.Filename)
+	if myjson.Original_Name != filename {
+		t.Fatal("Filename was not provided one but " + myjson.Original_Name)
 	}
 }
 
@@ -909,7 +919,7 @@ func TestPutRandomizedJSONUpload(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if myjson.Filename == filename {
+	if myjson.Original_Name == filename {
 		t.Fatal("Filename was not random ")
 	}
 }
