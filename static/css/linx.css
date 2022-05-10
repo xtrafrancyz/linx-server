@@ -18,13 +18,22 @@ body {
   min-width: 200px;
 }
 
+#header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  margin: 15px 0;
+}
+
+#header h2 {
+  padding-right: 10px;
+  margin: 0;
+}
+
 #header a {
   text-decoration: none;
   color: #556A7F;
-}
-
-#navigation {
-  margin-top: 4px;
 }
 
 #navigation a {
@@ -38,9 +47,9 @@ body {
 }
 
 #main {
-  background-color: white; 
+  background-color: white;
 
-  padding: 6px 5px 8px 5px; 
+  padding: 6px 5px 8px 5px;
 
   -moz-box-shadow:    1px 1px 1px 1px #ccc;
   -webkit-box-shadow: 1px 1px 1px 1px #ccc;
@@ -220,16 +229,16 @@ body {
 }
 
 #linx_display_links {
-  display:none; 
-  padding: 20px; 
-  background-color: #00AFF5; 
-  border-top: 3px solid #6bacf5; 
-  border-left: 3px solid #6bacf5; 
-  border-right: 3px solid #6bacf5; 
-  border-bottom: 3px solid #6bacf5; 
+  display:none;
+  padding: 20px;
+  background-color: #00AFF5;
+  border-top: 3px solid #6bacf5;
+  border-left: 3px solid #6bacf5;
+  border-right: 3px solid #6bacf5;
+  border-bottom: 3px solid #6bacf5;
   margin-top: 15px;
-  margin-bottom: 10px; 
-  font-size: 12px; 
+  margin-bottom: 10px;
+  font-size: 12px;
 }
 
 #linx_display_links a,a:active,a:visited {
@@ -242,9 +251,9 @@ body {
 }
 
 #upload_btn {
-  background-color: white; 
-  border: 2px solid #C9C9C9; 
-  width: 90px; 
+  background-color: white;
+  border: 2px solid #C9C9C9;
+  width: 90px;
   height: 30px;
 }
 

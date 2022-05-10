@@ -5,7 +5,7 @@
 	<title>{% block title %}{{ sitename }}{% endblock %}</title>
 	<meta charset='utf-8' content='text/html' http-equiv='content-type'>
 	<meta name='viewport' content='width=device-width, initial-scale=0.8'>
-	<link href='{{ sitepath }}static/css/linx.css?v=3' media='screen, projection' rel='stylesheet' type='text/css'>
+	<link href='{{ sitepath }}static/css/linx.css?v=4' media='screen, projection' rel='stylesheet' type='text/css'>
 	<link href='{{ sitepath }}static/css/hint.css' rel='stylesheet' type='text/css'>
 	<link href='{{ sitepath }}static/images/favicon.gif' rel='icon' type='image/gif'>
 	<meta property="og:site_name" content="{{ sitename }}" />
@@ -16,7 +16,8 @@
 	<div id="container_container">
 		<div id="container">
 			<div id="header">
-				<div id="navigation" class="right">
+				<h2><a href="{{ sitepath }}" title="{{ sitename }}">{{ sitename }}</a></h2>
+				<div id="navigation">
 					{% if auth != "header" %}
 					<a href="{{ sitepath }}">Upload</a> |
 					<a href="{{ sitepath }}paste/">Paste</a> |
@@ -26,7 +27,6 @@
 					| <a href="{{ sitepath }}{{ custom_file_name }}/">{{ custom_page_name }}</a>
 					{% endfor %}
 				</div>
-				<h2><a href="{{ sitepath }}" title="{{ sitename }}">{{ sitename }}</a></h2>
 			</div>
 
 			{% block content %}{% endblock %}
