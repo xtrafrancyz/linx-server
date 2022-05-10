@@ -1,11 +1,13 @@
 {% extends "base.html" %}
 
 {% block head %}
+{{ block.Super|safe }}
 <meta property="og:image" content="{{ siteurl }}{{ sitepath }}{{ selifpath }}{{ filename }}" />
+<meta property="og:image:type" content="{{ mime }}" />
 {% endblock %}
 
 {% block main %}
 <a href="{{ sitepath }}{{ selifpath }}{{ filename }}">
-    <img class="display-image" src="{{ sitepath }}{{ selifpath }}{{ filename }}" />
+    <img class="display-image" src="{{ sitepath }}{{ selifpath }}{{ filename }}" alt="{{ original_name }}" />
 </a>
 {% endblock %}

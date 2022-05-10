@@ -1,7 +1,10 @@
 {% extends "base.html" %}
 
 {% block head %}
+{{ block.Super|safe }}
+<meta property="og:type" content="video.other" />
 <meta property="og:video" content="{{ siteurl }}{{ sitepath }}{{ selifpath }}{{ filename }}" />
+<meta property="og:video:type" content="{{ mime }}" />
 {% endblock %}
 
 {% block main %}

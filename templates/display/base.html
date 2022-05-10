@@ -2,6 +2,11 @@
 
 {% block title %}{{sitename}} - {{ original_name }}{% endblock %}
 
+{% block head %}
+<meta property="og:title" content="{{ original_name }}" />
+<meta property="og:url" content="{{ siteurl }}{{ sitepath }}{{ filename }}" />
+{% endblock %}
+
 {% block bodymore %}{% endblock %}
 
 {% block content %}

@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 
 {% block head %}
+{{ block.Super|safe }}
     <link href="{{ sitepath }}static/css/highlight/tomorrow.css" rel="stylesheet" type="text/css">
 {% if extra.lang_hl != "text" %}
     <link href="{{ sitepath }}static/css/highlight/lines.css" rel="stylesheet" type="text/css">

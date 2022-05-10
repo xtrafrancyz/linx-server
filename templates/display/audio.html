@@ -1,7 +1,10 @@
 {% extends "base.html" %}
 
 {% block head %}
+{{ block.Super|safe }}
+<meta property="og:type" content="music:song" />
 <meta property="og:audio" content="{{ siteurl }}{{ sitepath }}{{ selifpath }}{{ filename }}" />
+<meta property="og:audio:type" content="{{ mime }}" />
 {% endblock %}
 
 {% block main %}
