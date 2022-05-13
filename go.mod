@@ -10,6 +10,7 @@ require (
 	github.com/gabriel-vasile/mimetype v1.4.0
 	github.com/microcosm-cc/bluemonday v1.0.18
 	github.com/minio/sha256-simd v1.0.0
+	github.com/nwaples/rardecode v1.1.3
 	github.com/russross/blackfriday v1.6.0
 	github.com/vharitonsky/iniflags v0.0.0-20180513140207-a33cd0b5f3de
 	github.com/zeebo/bencode v1.0.0
