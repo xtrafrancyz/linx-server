@@ -1,6 +1,19 @@
+:root {
+  color-scheme: light dark;
+}
+
+html {
+  --bg-color: #E8ECF0;
+  --primary-color: #556A7F;
+  --block-bg-color: white;
+  --block-shadow: 1px 1px 1px 1px #ccc;
+  --input-border-color: #eaeaea;
+  --input-background-color: white;
+}
+
 body {
-  background-color: #E8ECF0;
-  color: #556A7F;
+  background-color: var(--bg-color);
+  color: var(--primary-color);
 
   font-family: Arial, Helvetica, sans-serif;
   font-size: 14px;
@@ -33,13 +46,13 @@ body {
 
 #header a {
   text-decoration: none;
-  color: #556A7F;
+  color: var(--primary-color);
 }
 
 #navigation a {
   text-decoration: none;
-  border-bottom: 1px dotted #556A7F;
-  color: #556A7F;
+  border-bottom: 1px dotted var(--primary-color);
+  color: var(--primary-color);
 }
 
 #navigation a:hover {
@@ -47,19 +60,17 @@ body {
 }
 
 #main {
-  background-color: white;
+  background-color: var(--block-bg-color);
 
   padding: 6px 5px 8px 5px;
 
-  -moz-box-shadow:    1px 1px 1px 1px #ccc;
-  -webkit-box-shadow: 1px 1px 1px 1px #ccc;
-  box-shadow:         1px 1px 1px 1px #ccc;
+  box-shadow: var(--block-shadow);
 
   text-align: center;
 }
 
 #main a {
-  color: #556A7F;
+  color: var(--primary-color);
 }
 
 #normal-content {
@@ -72,22 +83,20 @@ body {
 }
 
 .dinfo {
-  -moz-box-shadow: 1px 1px 1px 1px #ccc;
-  -webkit-box-shadow: 1px 1px 1px 1px #ccc;
-  box-shadow: 1px 1px 1px 1px #ccc;
+  box-shadow: var(--block-shadow);
   margin-bottom: 15px;
 }
 
 #info {
-  background-color: white;
+  background-color: var(--block-bg-color);
   padding: 5px;
 }
 
 #filename {
-    max-width: 500px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+  max-width: 500px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .info-flex {
@@ -105,17 +114,17 @@ body {
 
 #info #extension,
 #editform #extension {
-    width: 40px;
+  width: 40px;
 }
 
 #info a {
   text-decoration: none;
-  color: #556A7F;
+  color: var(--primary-color);
 }
 
 #info a:hover {
   border-bottom: 1px dotted gray;
-  background-color: #E8ECF0;
+  background-color: var(--bg-color);
 }
 
 #info input[type=checkbox] {
@@ -148,7 +157,7 @@ body {
 
 .normal a:hover {
   color: black;
-  background-color: #E8ECF0;
+  background-color: var(--bg-color);
 }
 
 .normal ul {
@@ -165,13 +174,13 @@ body {
 }
 
 .fixed {
-    width: 80vw;
-    max-width: 800px;
+  width: 80vw;
+  max-width: 800px;
 }
 
 .paste {
-    width: 70vw;
-    max-width: 700px;
+  width: 70vw;
+  max-width: 700px;
 }
 
 .needs-border {
@@ -218,18 +227,18 @@ body {
 
 #file-uploader a {
   text-decoration: none;
-  border-bottom: 1px dotted #556A7F;
-  color: #556A7F;
+  border-bottom: 1px dotted var(--primary-color);
+  color: var(--primary-color);
   font-weight: bold;
 }
 
 #filesUploaded {
-  display:none;
-  text-align:left;
+  display: none;
+  text-align: left;
 }
 
 #linx_display_links {
-  display:none;
+  display: none;
   padding: 20px;
   background-color: #00AFF5;
   border-top: 3px solid #6bacf5;
@@ -241,13 +250,13 @@ body {
   font-size: 12px;
 }
 
-#linx_display_links a,a:active,a:visited {
+#linx_display_links a, a:active, a:visited {
   color: white;
 }
 
 #supported_files {
-  display:none;
-  text-align:left;
+  display: none;
+  text-align: left;
 }
 
 #upload_btn {
@@ -258,7 +267,7 @@ body {
 }
 
 #expires {
-  width:75px;
+  width: 75px;
 }
 
 #choices {
@@ -271,8 +280,11 @@ body {
   font-size: 13px;
 }
 
-#expiry {
-  padding-top: 1px;
+select#expiry {
+  height: 16px;
+  padding: 2px 4px;
+  box-sizing: content-box;
+  border: 1px solid var(--input-border-color);
 }
 
 #access_key {
@@ -293,16 +305,16 @@ body {
 }
 
 .oopscontent {
-    width: 400px;
+  width: 400px;
 }
 
 .oopscontent img {
-    width: 400px;
-    border: 0;
+  width: 400px;
+  border: 0;
 }
 
 .error-404 img {
-    max-width: 90vw;
+  max-width: 90vw;
 }
 
 .padme {
@@ -313,7 +325,8 @@ body {
 .editor {
   width: 100%;
   height: 450px;
-  border: 1px solid #eaeaea;
+  border: 1px solid var(--input-border-color);
+  background-color: var(--input-background-color);
   font-family: monospace;
   resize: none;
   overflow: auto;
@@ -322,79 +335,99 @@ body {
   box-sizing: border-box;
   -webkit-box-sizing: border-box;
   -moz-box-sizing: border-box;
- }
+}
 
 
 #info input[type=text] {
-  border: 1px solid #eaeaea;
-  color: #556A7F;
+  border: 1px solid var(--input-border-color);
+  background-color: var(--input-background-color);
+  color: var(--primary-color);
   padding: 2px 4px;
   font-family: Arial, Helvetica, sans-serif;
+  height: 16px;
 }
 
 .storygreen {
-    color: #789922;
+  color: #789922;
 }
 
 .storyred {
   color: #800000;
 }
 
-/* Content display {{{ */
 .download-btn {
-    padding: 5px 20px;
-    display: block;
-    margin: 5px auto;
-    text-align: center;
-    font-size: 30px;
-    border: dashed 2px !important;
-    width: 180px;
+  padding: 5px 20px;
+  display: block;
+  margin: 5px auto;
+  text-align: center;
+  font-size: 30px;
+  border: dashed 2px !important;
+  width: 180px;
 }
 
 .display-audio,
 .display-file {
-    width: 100%;
-    max-width: 1000px;
-    word-break: break-word;
+  width: 100%;
+  max-width: 1000px;
+  word-break: break-word;
 }
 
 .display-image {
-    margin-bottom: -6px;
-    max-width: 800px;
+  margin-bottom: -6px;
+  max-width: 800px;
 }
 
 .display-pdf {
-    width: 910px;
-    height: 800px;
+  width: 910px;
+  height: 800px;
 }
 
 .display-video {
-    width: 800px;
-    max-height: 70vh;
+  width: 800px;
+  max-height: 70vh;
 }
 
 .scrollable {
-    overflow: auto;
+  overflow: auto;
 }
 
 .storycontent {
-    background-color: #f0e0d6 !important;
+  background-color: #f0e0d6 !important;
 }
 
 #editform,
 #editform .editor {
-    display: none;
-    width: 100%
+  display: none;
+  width: 100%
 }
 
 #codeb {
-    white-space: pre-wrap;
+  white-space: pre-wrap;
 }
 
 #inplace-editor {
-    display: none;
-    width: 100%;
-    height: 800px;
-    font-size: 13px;
+  display: none;
+  width: 100%;
+  height: 800px;
+  font-size: 13px;
 }
-/* }}} */
+
+
+@media (prefers-color-scheme: dark) {
+  html {
+    --bg-color: #202124;
+    --primary-color: #bdc1c6;
+    --block-bg-color: #303134;
+    --block-shadow: 1px 1px 1px 1px rgb(23 23 23 / 90%);
+    --input-border-color: #5f6368;
+    --input-background-color: #303134;
+  }
+
+  input:focus-visible, textarea:focus-visible, select:focus-visible {
+    outline: 1px solid #d8d8d8;
+  }
+
+  #navigation a:hover {
+    background-color: #4b5161;
+  }
+}

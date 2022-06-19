@@ -66,7 +66,7 @@ Dropzone.options.dropzone = {
     uploadprogress: function (file, p, bytesSent) {
         p = parseInt(p);
         file.progressElement.innerHTML = p + "%";
-        file.uploadElement.setAttribute("style", 'background-image: -webkit-linear-gradient(left, #F2F4F7 ' + p + '%, #E2E2E2 ' + p + '%); background-image: -moz-linear-gradient(left, #F2F4F7 ' + p + '%, #E2E2E2 ' + p + '%); background-image: -ms-linear-gradient(left, #F2F4F7 ' + p + '%, #E2E2E2 ' + p + '%); background-image: -o-linear-gradient(left, #F2F4F7 ' + p + '%, #E2E2E2 ' + p + '%); background-image: linear-gradient(left, #F2F4F7 ' + p + '%, #E2E2E2 ' + p + '%)');
+        file.uploadElement.setAttribute("style", 'background-image: linear-gradient(to right, var(--block-bg-color) ' + p + '%, var(--bg-color) ' + p + '%)');
     },
     sending: function (file, xhr, formData) {
         formData.append("expires", document.getElementById("expires").value);
