@@ -102,6 +102,7 @@ maxexpiry = 86400
 | ```remoteuploads = true```                  | (optionally) enable remote uploads (/upload?url=https://...)                                                                                                                                                                                                                           |
 | ```nologs = true```                         | (optionally) disable request logs in stdout                                                                                                                                                                                                                                            |
 | ```custompagespath = custom_pages/```       | (optionally) specify path to directory containing markdown pages (must end in .md) that will be added to the site navigation (this can be useful for providing contact/support information and so on). For example, custom_pages/My_Page.md will become My Page in the site navigation |
+| ```forbidden-extension = exe```             | Restrict uploading files with extension (e.g. exe). This option can be used multiple times.                                                                                                                                                                                            |
 
 #### Cleaning up expired files
 

@@ -262,6 +262,12 @@ func processUpload(upReq UploadRequest) (upload Upload, err error) {
 		}
 	}
 
+	for _, e := range Config.forbiddenExtensions {
+		if extension == e {
+			return upload, errors.New("forbidden file extension")
+		}
+	}
+
 	for {
 		slug := generateBarename()
 		upload.Filename = strings.Join([]string{slug, extension}, ".")

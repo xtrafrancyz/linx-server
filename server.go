@@ -73,6 +73,7 @@ var Config struct {
 	accessKeyCookieExpiry     uint64
 	customPagesDir            string
 	cleanupEveryMinutes       uint64
+	forbiddenExtensions       headerList
 }
 
 //go:embed static templates
@@ -318,6 +319,8 @@ func main() {
 		"path to directory containing .md files to render as custom pages")
 	flag.Uint64Var(&Config.cleanupEveryMinutes, "cleanup-every-minutes", 0,
 		"How often to clean up expired files in minutes (default is 0, which means files will be cleaned up as they are accessed)")
+	flag.Var(&Config.forbiddenExtensions, "forbidden-extension",
+		"Restrict uploading files with extension (e.g. exe). This option can be used multiple times.")
 
 	iniflags.Parse()
 
