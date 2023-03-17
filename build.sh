@@ -3,23 +3,11 @@
 function build_binary {
     name="$1"
 
-    for arch in amd64 386; do
+    for arch in amd64 arm64; do
         GOOS=darwin GOARCH=$arch go build -o "$name"osx-$arch
     done
 
-    for arch in amd64 386; do
-        GOOS=freebsd GOARCH=$arch go build -o "$name"freebsd-$arch
-    done
-
-    for arch in arm amd64 386; do
-        GOOS=netbsd GOARCH=$arch go build -o "$name"netbsd-$arch
-    done
-
-    for arch in amd64 386; do
-        GOOS=openbsd GOARCH=$arch go build -o "$name"openbsd-$arch
-    done
-
-    for arch in arm arm64 amd64 386; do
+    for arch in arm64 amd64 386; do
         GOOS=linux GOARCH=$arch go build -o "$name"linux-$arch
     done
 
@@ -35,8 +23,4 @@ build_binary "binaries/""$version""/linx-server-v""$version""_"
 
 cd linx-genkey
 build_binary "../binaries/""$version""/linx-genkey-v""$version""_"
-cd ..
-
-cd linx-cleanup
-build_binary "../binaries/""$version""/linx-cleanup-v""$version""_"
 cd ..
