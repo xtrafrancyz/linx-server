@@ -55,6 +55,7 @@ var Config struct {
 	xFrameOptions             string
 	maxSize                   int64
 	maxExpiry                 uint64
+	defaultExpiryCli          uint64
 	realIp                    bool
 	noLogs                    bool
 	allowHotlink              bool
@@ -221,6 +222,7 @@ func setup() *web.Mux {
 
 	mux.Post(Config.sitePath+"upload", uploadPostHandler)
 	mux.Post(Config.sitePath+"upload/", uploadPostHandler)
+	mux.Post(Config.sitePath+"upload/:name", uploadPostHandler)
 	mux.Put(Config.sitePath+"upload", uploadPutHandler)
 	mux.Put(Config.sitePath+"upload/", uploadPutHandler)
 	mux.Put(Config.sitePath+"upload/:name", uploadPutHandler)
@@ -321,6 +323,7 @@ func main() {
 		"How often to clean up expired files in minutes (default is 0, which means files will be cleaned up as they are accessed)")
 	flag.Var(&Config.forbiddenExtensions, "forbidden-extension",
 		"Restrict uploading files with extension (e.g. exe). This option can be used multiple times.")
+	flag.Uint64Var(&Config.defaultExpiryCli, "default-expiry-cli", 0, "Default expiry time in seconds for cli uploads (set 0 to use max expiry)")
 
 	iniflags.Parse()
 

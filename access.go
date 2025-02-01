@@ -32,7 +32,7 @@ const accessKeyParamName = "access_key"
 var (
 	errInvalidAccessKey = errors.New("invalid access key")
 
-	cliUserAgentRe = regexp.MustCompile("(?i)(lib)?curl|wget")
+	cliUserAgentRe = regexp.MustCompile("(?i)(lib)?curl|wget|java|python|go-http-client")
 )
 
 func checkAccessKey(r *http.Request, metadata *backends.Metadata) (accessKeySource, error) {

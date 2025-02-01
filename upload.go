@@ -75,24 +75,9 @@ func uploadPostHandler(c web.C, w http.ResponseWriter, r *http.Request) {
 		upReq.size = headers.Size
 		upReq.filename = headers.Filename
 	} else {
-		if r.PostFormValue("content") == "" {
-			badRequestHandler(c, w, r, RespAUTO, "Empty file")
-			return
-		}
-		extension := r.PostFormValue("extension")
-		if extension == "" {
-			extension = "txt"
-		}
-
-		content := r.PostFormValue("content")
-
-		upReq.src = strings.NewReader(content)
-		upReq.size = int64(len(content))
-		upReq.filename = r.PostFormValue("filename") + "." + extension
+		upReq.src = http.MaxBytesReader(w, r.Body, Config.maxSize)
+		upReq.filename = c.URLParams["name"]
 	}
-
-	upReq.expiry = parseExpiry(r.PostFormValue("expires"))
-	upReq.accessKey = r.PostFormValue(accessKeyParamName)
 
 	upload, err := processUpload(upReq)
 
@@ -195,7 +180,7 @@ func uploadRemote(c web.C, w http.ResponseWriter, r *http.Request) {
 	upReq.src = http.MaxBytesReader(w, resp.Body, Config.maxSize)
 	upReq.deleteKey = r.FormValue("deletekey")
 	upReq.accessKey = r.FormValue(accessKeyParamName)
-	upReq.expiry = parseExpiry(r.FormValue("expiry"))
+	upReq.expiry = parseExpiry(r.FormValue("expiry"), true)
 
 	upload, err := processUpload(upReq)
 
@@ -228,7 +213,8 @@ func uploadHeaderProcess(r *http.Request, upReq *UploadRequest) {
 
 	// Get seconds until expiry. Non-integer responses never expire.
 	expStr := r.Header.Get("Linx-Expiry")
-	upReq.expiry = parseExpiry(expStr)
+	cli := cliUserAgentRe.MatchString(r.Header.Get("User-Agent"))
+	upReq.expiry = parseExpiry(expStr, cli)
 }
 
 func processUpload(upReq UploadRequest) (upload Upload, err error) {
@@ -363,18 +349,23 @@ func barePlusExt(filename string) (barename, extension string) {
 	return
 }
 
-func parseExpiry(expStr string) time.Duration {
-	if expStr == "" {
-		return time.Duration(Config.maxExpiry) * time.Second
-	} else {
-		fileExpiry, err := strconv.ParseUint(expStr, 10, 64)
-		if err != nil {
-			return time.Duration(Config.maxExpiry) * time.Second
-		} else {
-			if Config.maxExpiry > 0 && (fileExpiry > Config.maxExpiry || fileExpiry == 0) {
-				fileExpiry = Config.maxExpiry
-			}
-			return time.Duration(fileExpiry) * time.Second
-		}
+func parseExpiry(expStr string, cli bool) time.Duration {
+	fallback := Config.maxExpiry
+	if cli && Config.defaultExpiryCli > 0 {
+		fallback = Config.defaultExpiryCli
 	}
+	if expStr == "" {
+		return time.Duration(fallback) * time.Second
+	}
+	fileExpiry, err := strconv.ParseUint(expStr, 10, 64)
+	if err != nil {
+		return time.Duration(fallback) * time.Second
+	}
+	if fileExpiry == 0 {
+		fileExpiry = fallback
+	}
+	if Config.maxExpiry > 0 && fileExpiry > Config.maxExpiry {
+		fileExpiry = Config.maxExpiry
+	}
+	return time.Duration(fileExpiry) * time.Second
 }
