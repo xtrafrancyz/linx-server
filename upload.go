@@ -75,9 +75,23 @@ func uploadPostHandler(c web.C, w http.ResponseWriter, r *http.Request) {
 		upReq.size = headers.Size
 		upReq.filename = headers.Filename
 	} else {
-		upReq.src = http.MaxBytesReader(w, r.Body, Config.maxSize)
-		upReq.filename = c.URLParams["name"]
+		if r.PostFormValue("content") == "" {
+			badRequestHandler(c, w, r, RespAUTO, "Empty file")
+			return
+		}
+		extension := r.PostFormValue("extension")
+		if extension == "" {
+			extension = "txt"
+		}
+		content := r.PostFormValue("content")
+		upReq.src = strings.NewReader(content)
+		upReq.size = int64(len(content))
+		upReq.filename = r.PostFormValue("filename") + "." + extension
 	}
+
+	cli := cliUserAgentRe.MatchString(r.Header.Get("User-Agent"))
+	upReq.expiry = parseExpiry(r.PostFormValue("expires"), cli)
+	upReq.accessKey = r.PostFormValue(accessKeyParamName)
 
 	upload, err := processUpload(upReq)
 
