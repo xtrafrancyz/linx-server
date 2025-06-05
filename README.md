@@ -14,7 +14,6 @@ You can see what it looks like using the demo: [https://drop.xtrafrancyz.net/](h
 - Display syntax-highlighted code with in-place editing
 - Documented API with keys if need to restrict uploads (can
   use [linx-client](https://github.com/andreimarcu/linx-client) for uploading through command-line)
-- Torrent download of files using web seeding
 - File expiry, deletion key, file access key, and random filename options
 
 ### Screenshots

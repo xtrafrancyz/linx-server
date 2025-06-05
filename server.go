@@ -178,7 +178,6 @@ func setup() *web.Mux {
 	nameRe := regexp.MustCompile("^" + Config.sitePath + `(?P<name>[a-z0-9-\.]+)$`)
 	selifRe := regexp.MustCompile("^" + Config.sitePath + Config.selifPath + `(?P<name>[a-z0-9-\.]+)$`)
 	selifIndexRe := regexp.MustCompile("^" + Config.sitePath + Config.selifPath + `$`)
-	torrentRe := regexp.MustCompile("^" + Config.sitePath + `(?P<name>[a-z0-9-\.]+)/torrent$`)
 
 	if Config.authFile == "" || Config.basicAuth {
 		mux.Get(Config.sitePath, indexHandler)
@@ -236,7 +235,6 @@ func setup() *web.Mux {
 	mux.Post(nameRe, fileAccessHandler)
 	mux.Get(selifRe, fileServeHandler)
 	mux.Get(selifIndexRe, unauthorizedHandler)
-	mux.Get(torrentRe, fileTorrentHandler)
 
 	if Config.customPagesDir != "" {
 		initializeCustomPages(Config.customPagesDir)
