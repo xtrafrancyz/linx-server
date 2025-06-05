@@ -2,14 +2,10 @@ package main
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"net/http"
-	"net/url"
 	"path"
-	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -19,8 +15,8 @@ import (
 	"github.com/andreimarcu/linx-server/expiry"
 	"github.com/dchest/uniuri"
 	"github.com/gabriel-vasile/mimetype"
+	"github.com/labstack/echo/v4"
 	"github.com/microcosm-cc/bluemonday"
-	"github.com/zenazn/goji/web"
 )
 
 var FileTooLargeError = errors.New("File too large.")
@@ -49,10 +45,11 @@ type Upload struct {
 	Metadata backends.Metadata
 }
 
-func uploadPostHandler(c web.C, w http.ResponseWriter, r *http.Request) {
+func uploadPostHandler(c echo.Context) error {
+	r := c.Request()
+
 	if !strictReferrerCheck(r, getSiteURL(r), []string{"Linx-Delete-Key", "Linx-Expiry", "X-Requested-With"}) {
-		badRequestHandler(c, w, r, RespAUTO, "")
-		return
+		return badRequestHandler(c, RespAUTO, "")
 	}
 
 	upReq := UploadRequest{}
@@ -66,8 +63,7 @@ func uploadPostHandler(c web.C, w http.ResponseWriter, r *http.Request) {
 			defer r.MultipartForm.RemoveAll()
 		}
 		if err != nil {
-			oopsHandler(c, w, r, RespHTML, "Could not upload file.")
-			return
+			return oopsHandler(c, RespHTML, "Could not upload file.")
 		}
 		defer file.Close()
 
@@ -76,8 +72,7 @@ func uploadPostHandler(c web.C, w http.ResponseWriter, r *http.Request) {
 		upReq.filename = headers.Filename
 	} else {
 		if r.PostFormValue("content") == "" {
-			badRequestHandler(c, w, r, RespAUTO, "Empty file")
-			return
+			return badRequestHandler(c, RespAUTO, "Empty file")
 		}
 		extension := r.PostFormValue("extension")
 		if extension == "" {
@@ -97,127 +92,52 @@ func uploadPostHandler(c web.C, w http.ResponseWriter, r *http.Request) {
 
 	if strings.EqualFold("application/json", r.Header.Get("Accept")) {
 		if err == FileTooLargeError || err == backends.FileEmptyError {
-			badRequestHandler(c, w, r, RespJSON, err.Error())
-			return
+			return badRequestHandler(c, RespJSON, err.Error())
 		} else if err != nil {
-			oopsHandler(c, w, r, RespJSON, "Could not upload file: "+err.Error())
-			return
+			return oopsHandler(c, RespJSON, "Could not upload file: "+err.Error())
 		}
 
-		js := generateJSONresponse(upload, r)
-		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-		w.Write(js)
+		return c.JSON(http.StatusOK, generateJSONresponse(upload, r))
 	} else {
 		if err == FileTooLargeError || err == backends.FileEmptyError {
-			badRequestHandler(c, w, r, RespHTML, err.Error())
-			return
+			return badRequestHandler(c, RespHTML, err.Error())
 		} else if err != nil {
-			oopsHandler(c, w, r, RespHTML, "Could not upload file: "+err.Error())
-			return
+			return oopsHandler(c, RespHTML, "Could not upload file: "+err.Error())
 		}
 
-		http.Redirect(w, r, Config.sitePath+upload.Filename, 303)
+		return c.Redirect(303, Config.sitePath+upload.Filename)
 	}
 }
 
-func uploadPutHandler(c web.C, w http.ResponseWriter, r *http.Request) {
+func uploadPutHandler(c echo.Context) error {
+	r := c.Request()
+	w := c.Response().Writer
+
 	upReq := UploadRequest{}
 	uploadHeaderProcess(r, &upReq)
 
 	defer r.Body.Close()
-	upReq.filename = c.URLParams["name"]
+	upReq.filename = c.Param("name")
 	upReq.src = http.MaxBytesReader(w, r.Body, Config.maxSize)
 
 	upload, err := processUpload(upReq)
 
 	if strings.EqualFold("application/json", r.Header.Get("Accept")) {
 		if err == FileTooLargeError || err == backends.FileEmptyError {
-			badRequestHandler(c, w, r, RespJSON, err.Error())
-			return
+			return badRequestHandler(c, RespJSON, err.Error())
 		} else if err != nil {
-			oopsHandler(c, w, r, RespJSON, "Could not upload file: "+err.Error())
-			return
+			return oopsHandler(c, RespJSON, "Could not upload file: "+err.Error())
 		}
 
-		js := generateJSONresponse(upload, r)
-		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-		w.Write(js)
+		return c.JSON(http.StatusOK, generateJSONresponse(upload, r))
 	} else {
 		if err == FileTooLargeError || err == backends.FileEmptyError {
-			badRequestHandler(c, w, r, RespPLAIN, err.Error())
-			return
+			return badRequestHandler(c, RespPLAIN, err.Error())
 		} else if err != nil {
-			oopsHandler(c, w, r, RespPLAIN, "Could not upload file: "+err.Error())
-			return
+			return oopsHandler(c, RespPLAIN, "Could not upload file: "+err.Error())
 		}
 
-		fmt.Fprintf(w, "%s\n", getSiteURL(r)+upload.Filename)
-	}
-}
-
-func uploadRemote(c web.C, w http.ResponseWriter, r *http.Request) {
-	if Config.remoteAuthFile != "" {
-		key := r.FormValue("key")
-		if key == "" && Config.basicAuth {
-			_, password, ok := r.BasicAuth()
-			if ok {
-				key = password
-			}
-		}
-		result, err := checkAuth(remoteAuthKeys, key)
-		if err != nil || !result {
-			if Config.basicAuth {
-				badAuthorizationHandler(w, r)
-			} else {
-				unauthorizedHandler(c, w, r)
-			}
-			return
-		}
-	}
-
-	if r.FormValue("url") == "" {
-		http.Redirect(w, r, Config.sitePath, 303)
-		return
-	}
-
-	upReq := UploadRequest{}
-	grabUrl, _ := url.Parse(r.FormValue("url"))
-	directURL := r.FormValue("direct_url") == "yes"
-
-	resp, err := http.Get(grabUrl.String())
-	if err != nil {
-		oopsHandler(c, w, r, RespAUTO, "Could not retrieve URL")
-		return
-	}
-
-	upReq.filename = filepath.Base(grabUrl.Path)
-	upReq.src = http.MaxBytesReader(w, resp.Body, Config.maxSize)
-	upReq.deleteKey = r.FormValue("deletekey")
-	upReq.accessKey = r.FormValue(accessKeyParamName)
-	upReq.expiry = parseExpiry(r.FormValue("expiry"), true)
-
-	upload, err := processUpload(upReq)
-
-	if strings.EqualFold("application/json", r.Header.Get("Accept")) {
-		if err != nil {
-			oopsHandler(c, w, r, RespJSON, "Could not upload file: "+err.Error())
-			return
-		}
-
-		js := generateJSONresponse(upload, r)
-		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-		w.Write(js)
-	} else {
-		if err != nil {
-			oopsHandler(c, w, r, RespHTML, "Could not upload file: "+err.Error())
-			return
-		}
-
-		if directURL {
-			http.Redirect(w, r, Config.sitePath+Config.selifPath+upload.Filename, 303)
-		} else {
-			http.Redirect(w, r, Config.sitePath+upload.Filename, 303)
-		}
+		return c.String(http.StatusOK, getSiteURL(r)+upload.Filename+"\n")
 	}
 }
 
@@ -312,8 +232,8 @@ func generateBarename() string {
 	return uniuri.NewLenChars(10, []byte("abcdefghijklmnopqrstuvwxyz0123456789"))
 }
 
-func generateJSONresponse(upload Upload, r *http.Request) []byte {
-	js, _ := json.Marshal(map[string]string{
+func generateJSONresponse(upload Upload, r *http.Request) map[string]string {
+	return map[string]string{
 		"url":           getSiteURL(r) + upload.Filename,
 		"direct_url":    getSiteURL(r) + Config.selifPath + upload.Filename,
 		"filename":      upload.Filename,
@@ -324,9 +244,7 @@ func generateJSONresponse(upload Upload, r *http.Request) []byte {
 		"size":          strconv.FormatInt(upload.Metadata.Size, 10),
 		"mimetype":      upload.Metadata.Mimetype,
 		"sha256sum":     upload.Metadata.Sha256sum,
-	})
-
-	return js
+	}
 }
 
 var bareRe = regexp.MustCompile(`[^A-Za-z0-9\-]`)

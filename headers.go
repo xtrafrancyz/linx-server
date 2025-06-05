@@ -1,30 +1,25 @@
 package main
 
 import (
+	"github.com/labstack/echo/v4"
 	"net/http"
 	"net/url"
 	"strings"
 )
 
-type addheaders struct {
-	h       http.Handler
-	headers []string
-}
+func AddHeaders(headers []string) echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			w := c.Response().Writer
 
-func (a addheaders) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	for _, header := range a.headers {
-		headerSplit := strings.SplitN(header, ": ", 2)
-		w.Header().Add(headerSplit[0], headerSplit[1])
+			for _, header := range headers {
+				headerSplit := strings.SplitN(header, ": ", 2)
+				w.Header().Add(headerSplit[0], headerSplit[1])
+			}
+
+			return next(c)
+		}
 	}
-
-	a.h.ServeHTTP(w, r)
-}
-
-func AddHeaders(headers []string) func(http.Handler) http.Handler {
-	fn := func(h http.Handler) http.Handler {
-		return addheaders{h, headers}
-	}
-	return fn
 }
 
 func getSiteURL(r *http.Request) string {

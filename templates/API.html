@@ -65,35 +65,19 @@
 
 			<p>Uploading myphoto.jpg</p>
 
-			{% if auth != "none" %}
-			<pre><code>$ curl -H "Linx-Api-Key: mysecretkey" -T myphoto.jpg {{ siteurl }}upload/  
-{{ siteurl }}7z4h4ut01.jpg</code></pre>
-			{% else %}
 			<pre><code>$ curl -T myphoto.jpg {{ siteurl }}upload/
 {{ siteurl }}wtq7pan4o.jpg</code></pre>
-			{% endif %}
 
 			<p>Uploading myphoto.jpg with an expiry of 20 minutes</p>
 
-			{% if auth != "none" %}
-			<pre><code>$ curl -H "Linx-Api-Key: mysecretkey" -H "Linx-Expiry: 1200" -T myphoto.jpg {{ siteurl }}upload/
-{{ siteurl }}jm295snf4h.jpg</code></pre>
-			{% else %}
 			<pre><code>$ curl -H "Linx-Expiry: 1200" -T myphoto.jpg {{ siteurl }}upload/
 {{ siteurl }}1d7oym9u2o.jpg</code></pre>
-			{% endif %}
 
 			<p>Uploading myphoto.jpg and getting a json response:</p>
 
-			{% if auth != "none" %}
-			<pre><code>$ curl -H "Linx-Api-Key: mysecretkey" -H "Accept: application/json" -T myphoto.jpg {{ siteurl }}upload/
-{"delete_key":"...","expiry":"0","filename":"f34h4iuj7.jpg","mimetype":"image/jpeg",
-"sha256sum":"...","size":"...","url":"{{ siteurl }}f34h4iuj7.jpg","original_name":"myphoto.jpg"}</code></pre>
-			{% else %}
 			<pre><code>$ curl -H "Accept: application/json" -T myphoto.jpg {{ siteurl }}upload/
 {"delete_key":"...","expiry":"0","filename":"f34h4iuj7.jpg","mimetype":"image/jpeg",
 "sha256sum":"...","size":"...","url":"{{ siteurl }}f34h4iuj7.jpg","original_name":"myphoto.jpg"}</code></pre>
-			{% endif %}
 
 			<h3>Deleting a file</h3>
 
@@ -104,7 +88,7 @@
 
 			<p>To delete f34h4iuj7.jpg</p>
 
-			<pre><code>$ curl{% if auth != "none" %} -H"Linx-Api-Key: mysecretkey"{% endif %}{% if !keyless_delete %} -H "Linx-Delete-Key: mysecret"{% endif %} -X DELETE {{ siteurl }}f34h4iuj7.jpg
+			<pre><code>$ curl{% if !keyless_delete %} -H "Linx-Delete-Key: mysecret"{% endif %} -X DELETE {{ siteurl }}f34h4iuj7.jpg
 DELETED</code></pre>
 
 			<h3>Information about a file</h3>

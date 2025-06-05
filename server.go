@@ -3,6 +3,7 @@ package main
 import (
 	"embed"
 	"flag"
+	"io/fs"
 	"log"
 	"net"
 	"net/http"
@@ -10,8 +11,6 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
-	"regexp"
-	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -20,11 +19,9 @@ import (
 	"github.com/andreimarcu/linx-server/backends/localfs"
 	"github.com/andreimarcu/linx-server/backends/s3"
 	"github.com/andreimarcu/linx-server/cleanup"
-	"github.com/flosch/pongo2/v5"
+	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
 	"github.com/vharitonsky/iniflags"
-	"github.com/zenazn/goji/graceful"
-	"github.com/zenazn/goji/web"
-	"github.com/zenazn/goji/web/middleware"
 )
 
 type headerList []string
@@ -60,10 +57,6 @@ var Config struct {
 	noLogs                    bool
 	allowHotlink              bool
 	fastcgi                   bool
-	remoteUploads             bool
-	basicAuth                 bool
-	authFile                  string
-	remoteAuthFile            string
 	addHeaders                headerList
 	noDirectAgents            bool
 	s3Endpoint                string
@@ -80,42 +73,66 @@ var Config struct {
 //go:embed static templates
 var staticEmbed embed.FS
 
-var Templates = make(map[string]*pongo2.Template)
-var timeStarted time.Time
-var timeStartedStr string
-var remoteAuthKeys []string
 var storageBackend backends.StorageBackend
 var customPages = make(map[string]string)
 var customPagesNames = make(map[string]string)
 
-func setup() *web.Mux {
-	mux := web.New()
+// EchoContentSecurityPolicy creates an Echo middleware for Content Security Policy
+func EchoContentSecurityPolicy(policy, referrerPolicy, frame string) echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			w := c.Response().Writer
 
-	// middleware
-	mux.Use(middleware.RequestID)
+			// only add a CSP if one is not already set
+			if existing := w.Header().Get(echo.HeaderContentSecurityPolicy); existing == "" {
+				w.Header().Add(echo.HeaderContentSecurityPolicy, policy)
+			}
+
+			// only add a Referrer Policy if one is not already set
+			if existing := w.Header().Get(echo.HeaderReferrerPolicy); existing == "" {
+				w.Header().Add(echo.HeaderReferrerPolicy, referrerPolicy)
+			}
+
+			w.Header().Set(echo.HeaderXFrameOptions, frame)
+
+			return next(c)
+		}
+	}
+}
+
+func setup() *echo.Echo {
+	e := echo.New()
+	e.HideBanner = true
+	e.Use(middleware.Recover())
 
 	if Config.realIp {
-		mux.Use(middleware.RealIP)
+		e.IPExtractor = echo.ExtractIPFromXFFHeader()
 	}
 
 	if !Config.noLogs {
-		mux.Use(middleware.Logger)
+		e.Use(middleware.RequestLoggerWithConfig(middleware.RequestLoggerConfig{
+			LogStatus:   true,
+			LogURI:      true,
+			LogMethod:   true,
+			LogRemoteIP: true,
+			LogLatency:  true,
+			LogValuesFunc: func(c echo.Context, v middleware.RequestLoggerValues) error {
+				log.Printf(`%d %s %v from: %s, %v`, v.Status, v.Method, v.URI, v.RemoteIP, v.Latency)
+				return nil
+			},
+		}))
 	}
 
-	mux.Use(middleware.Recoverer)
-	mux.Use(middleware.AutomaticOptions)
-	mux.Use(ContentSecurityPolicy(CSPOptions{
-		policy:         Config.contentSecurityPolicy,
-		referrerPolicy: Config.referrerPolicy,
-		frame:          Config.xFrameOptions,
-	}))
-	mux.Use(AddHeaders(Config.addHeaders))
-
-	if Config.authFile != "" {
-		mux.Use(UploadAuth(AuthOptions{
-			AuthFile:      Config.authFile,
-			UnauthMethods: []string{"GET", "HEAD", "OPTIONS", "TRACE"},
-		}))
+	if Config.contentSecurityPolicy != "" || Config.referrerPolicy != "" || Config.xFrameOptions != "" {
+		e.Use(EchoContentSecurityPolicy(
+			Config.contentSecurityPolicy,
+			Config.referrerPolicy,
+			Config.xFrameOptions,
+		))
+		e.Use(middleware.Secure())
+	}
+	if len(Config.addHeaders) > 0 {
+		e.Use(AddHeaders(Config.addHeaders))
 	}
 
 	// make directories if needed
@@ -146,8 +163,11 @@ func setup() *web.Mux {
 	}
 
 	Config.selifPath = strings.TrimLeft(Config.selifPath, "/")
-	if lastChar := Config.selifPath[len(Config.selifPath)-1:]; lastChar != "/" {
+	if !strings.HasSuffix(Config.selifPath, "/") {
 		Config.selifPath = Config.selifPath + "/"
+	}
+	if Config.selifPath == "/" {
+		Config.selifPath = "selif/"
 	}
 
 	if Config.s3Bucket != "" {
@@ -165,88 +185,66 @@ func setup() *web.Mux {
 	if err != nil {
 		log.Fatal("Error: could not load templates", err)
 	}
-	TemplateSet := pongo2.NewSet("templates", p2l)
-	err = populateTemplatesMap(TemplateSet, Templates)
-	if err != nil {
-		log.Fatal("Error: could not load templates", err)
-	}
-
-	timeStarted = time.Now()
-	timeStartedStr = strconv.FormatInt(timeStarted.Unix(), 10)
+	e.Renderer = p2l
 
 	// Routing setup
-	nameRe := regexp.MustCompile("^" + Config.sitePath + `(?P<name>[a-z0-9-\.]+)$`)
-	selifRe := regexp.MustCompile("^" + Config.sitePath + Config.selifPath + `(?P<name>[a-z0-9-\.]+)$`)
-	selifIndexRe := regexp.MustCompile("^" + Config.sitePath + Config.selifPath + `$`)
-
-	if Config.authFile == "" || Config.basicAuth {
-		mux.Get(Config.sitePath, indexHandler)
-		mux.Get(Config.sitePath+"paste/", pasteHandler)
+	var g *echo.Group
+	if Config.sitePath == "/" {
+		g = e.Group("")
 	} else {
-		mux.Get(Config.sitePath, http.RedirectHandler(Config.sitePath+"API", 303))
-		mux.Get(Config.sitePath+"paste/", http.RedirectHandler(Config.sitePath+"API/", 303))
-	}
-	mux.Get(Config.sitePath+"paste", http.RedirectHandler(Config.sitePath+"paste/", 301))
-
-	mux.Get(Config.sitePath+"API/", apiDocHandler)
-	mux.Get(Config.sitePath+"API", http.RedirectHandler(Config.sitePath+"API/", 301))
-
-	if Config.remoteUploads {
-		mux.Get(Config.sitePath+"upload", uploadRemote)
-		mux.Get(Config.sitePath+"upload/", uploadRemote)
-
-		if Config.remoteAuthFile != "" {
-			remoteAuthKeys = readAuthKeys(Config.remoteAuthFile)
-		}
+		g = e.Group(Config.sitePath)
 	}
 
-	if Config.basicAuth {
-		options := AuthOptions{
-			AuthFile:      Config.authFile,
-			UnauthMethods: []string{},
-		}
-		okFunc := func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Location", Config.sitePath)
-			w.WriteHeader(http.StatusFound)
-		}
-		authHandler := auth{
-			successHandler: http.HandlerFunc(okFunc),
-			failureHandler: http.HandlerFunc(badAuthorizationHandler),
-			authKeys:       readAuthKeys(Config.authFile),
-			o:              options,
-		}
-		mux.Head(Config.sitePath+"auth", authHandler)
-		mux.Get(Config.sitePath+"auth", authHandler)
-	}
+	g.GET("/", indexHandler)
+	g.GET("/paste", pasteHandler)
+	g.GET("/paste/", pasteHandler)
+	g.GET("/API", apiDocHandler)
+	g.GET("/API/", apiDocHandler)
 
-	mux.Post(Config.sitePath+"upload", uploadPostHandler)
-	mux.Post(Config.sitePath+"upload/", uploadPostHandler)
-	mux.Post(Config.sitePath+"upload/:name", uploadPostHandler)
-	mux.Put(Config.sitePath+"upload", uploadPutHandler)
-	mux.Put(Config.sitePath+"upload/", uploadPutHandler)
-	mux.Put(Config.sitePath+"upload/:name", uploadPutHandler)
+	g.POST("/upload", uploadPostHandler)
+	g.POST("/upload/", uploadPostHandler)
+	g.POST("/upload/:name", uploadPostHandler)
+	g.PUT("/upload", uploadPutHandler)
+	g.PUT("/upload/", uploadPutHandler)
+	g.PUT("/upload/:name", uploadPutHandler)
 
-	mux.Delete(Config.sitePath+":name", deleteHandler)
+	g.DELETE("/:name", deleteHandler)
 
-	mux.Get(Config.sitePath+"static/*", staticHandler)
-	mux.Get(Config.sitePath+"favicon.ico", staticHandler)
-	mux.Get(Config.sitePath+"robots.txt", staticHandler)
-	mux.Get(nameRe, fileAccessHandler)
-	mux.Post(nameRe, fileAccessHandler)
-	mux.Get(selifRe, fileServeHandler)
-	mux.Get(selifIndexRe, unauthorizedHandler)
+	staticfs, _ := fs.Sub(staticEmbed, "static")
+	g.StaticFS("/static", staticfs)
+	g.FileFS("/favicon.ico", "static/images/favicon.gif", staticEmbed)
+	e.FileFS("/robots.txt", "static/robots.txt", staticEmbed)
+
+	// For regex routes, we need to use Echo's regex route syntax
+	g.GET("/:name", fileAccessHandler)
+	g.POST("/:name", fileAccessHandler)
+	g.GET("/"+Config.selifPath+":name", fileServeHandler)
 
 	if Config.customPagesDir != "" {
 		initializeCustomPages(Config.customPagesDir)
 		for fileName := range customPagesNames {
-			mux.Get(Config.sitePath+fileName, makeCustomPageHandler(fileName))
-			mux.Get(Config.sitePath+fileName+"/", makeCustomPageHandler(fileName))
+			g.GET(fileName, makeCustomPageHandler(fileName))
 		}
 	}
 
-	mux.NotFound(notFoundHandler)
+	// Set custom 404 handler
+	e.HTTPErrorHandler = func(err error, c echo.Context) {
+		if he, ok := err.(*echo.HTTPError); ok {
+			if he.Code == http.StatusNotFound {
+				notFoundHandler(c)
+				return
+			} else if he.Code == http.StatusUnauthorized {
+				unauthorizedHandler(c)
+				return
+			} else if he.Code == http.StatusBadRequest {
+				badRequestHandler(c, RespAUTO, "")
+				return
+			}
+		}
+		e.DefaultHTTPErrorHandler(err, c)
+	}
 
-	return mux
+	return e
 }
 
 func main() {
@@ -256,8 +254,6 @@ func main() {
 		"path to files directory")
 	flag.StringVar(&Config.metaDir, "metapath", "meta/",
 		"path to metadata directory")
-	flag.BoolVar(&Config.basicAuth, "basicauth", false,
-		"allow logging by basic auth password")
 	flag.BoolVar(&Config.noLogs, "nologs", false,
 		"remove stdout output for each request")
 	flag.BoolVar(&Config.allowHotlink, "allowhotlink", false,
@@ -280,12 +276,6 @@ func main() {
 		"use X-Real-IP/X-Forwarded-For headers as original host")
 	flag.BoolVar(&Config.fastcgi, "fastcgi", false,
 		"serve through fastcgi")
-	flag.BoolVar(&Config.remoteUploads, "remoteuploads", false,
-		"enable remote uploads")
-	flag.StringVar(&Config.authFile, "authfile", "",
-		"path to a file containing newline-separated scrypted auth keys")
-	flag.StringVar(&Config.remoteAuthFile, "remoteauthfile", "",
-		"path to a file containing newline-separated scrypted auth keys for remote uploads")
 	flag.StringVar(&Config.contentSecurityPolicy, "contentsecuritypolicy",
 		"default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; frame-ancestors 'self';",
 		"value of default Content-Security-Policy header")
@@ -325,27 +315,13 @@ func main() {
 
 	iniflags.Parse()
 
-	mux := setup()
+	e := setup()
 
 	if Config.fastcgi {
 		var listener net.Listener
 		var err error
 		if Config.bind[0] == '/' {
-			// UNIX path
-			listener, err = net.ListenUnix("unix", &net.UnixAddr{Name: Config.bind, Net: "unix"})
-			cleanup := func() {
-				log.Print("Removing FastCGI socket")
-				os.Remove(Config.bind)
-			}
-			defer cleanup()
-			sigs := make(chan os.Signal, 1)
-			signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
-			go func() {
-				sig := <-sigs
-				log.Print("Signal: ", sig)
-				cleanup()
-				os.Exit(0)
-			}()
+			listener, err = listenUnixSocket(Config.bind)
 		} else {
 			listener, err = net.Listen("tcp", Config.bind)
 		}
@@ -354,18 +330,48 @@ func main() {
 		}
 
 		log.Printf("Serving over fastcgi, bound on %s", Config.bind)
-		fcgi.Serve(listener, mux)
+		err = fcgi.Serve(listener, e)
+		if err != nil {
+			log.Fatal(err)
+		}
 	} else if Config.certFile != "" {
 		log.Printf("Serving over https, bound on %s", Config.bind)
-		err := graceful.ListenAndServeTLS(Config.bind, Config.certFile, Config.keyFile, mux)
+		err := e.StartTLS(Config.bind, Config.certFile, Config.keyFile)
 		if err != nil {
 			log.Fatal(err)
 		}
 	} else {
 		log.Printf("Serving over http, bound on %s", Config.bind)
-		err := graceful.ListenAndServe(Config.bind, mux)
+		if strings.HasPrefix(Config.bind, "/") {
+			listener, err := listenUnixSocket(Config.bind)
+			if err != nil {
+				log.Fatal("Could not bind: ", err)
+			}
+			e.Listener = listener
+		}
+		err := e.Start(Config.bind)
 		if err != nil {
 			log.Fatal(err)
 		}
 	}
+}
+
+func listenUnixSocket(path string) (net.Listener, error) {
+	listener, err := net.ListenUnix("unix", &net.UnixAddr{Name: path, Net: "unix"})
+
+	cleanupSocketFile := func() {
+		log.Print("Removing FastCGI socket")
+		os.Remove(path)
+	}
+	defer cleanupSocketFile()
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+		sig := <-sigs
+		log.Print("Signal: ", sig)
+		cleanupSocketFile()
+		os.Exit(0)
+	}()
+
+	return listener, err
 }

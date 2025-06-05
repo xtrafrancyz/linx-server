@@ -20,7 +20,3 @@ version="$1"
 mkdir -p "binaries/""$version"
 
 build_binary "binaries/""$version""/linx-server-v""$version""_"
-
-cd linx-genkey
-build_binary "../binaries/""$version""/linx-genkey-v""$version""_"
-cd ..

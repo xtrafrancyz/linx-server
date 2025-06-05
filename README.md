@@ -1,6 +1,5 @@
 linx-server
 ======
-[![Build Status](https://travis-ci.com/xtrafrancyz/linx-server.svg?branch=master)](https://travis-ci.com/xtrafrancyz/linx-server)
 
 Self-hosted file/media sharing website.
 
@@ -11,6 +10,7 @@ You can see what it looks like using the demo: [https://drop.xtrafrancyz.net/](h
 ### Features
 
 - Display common filetypes (image, video, audio, markdown, pdf)
+- Dark theme (automatically switches based on browser preference)
 - Display syntax-highlighted code with in-place editing
 - Documented API with keys if need to restrict uploads (can
   use [linx-client](https://github.com/andreimarcu/linx-client) for uploading through command-line)
@@ -18,9 +18,9 @@ You can see what it looks like using the demo: [https://drop.xtrafrancyz.net/](h
 
 ### Screenshots
 
-<img width="730" src="https://user-images.githubusercontent.com/4650950/76579039-03c82680-6488-11ea-8e23-4c927386fbd9.png" />
+<img width="730" src=".github/images/screenshot1.png" />
 
-<img width="180" src="https://user-images.githubusercontent.com/4650950/76578903-771d6880-6487-11ea-8baf-a4a23fef4d26.png" /> <img width="180" src="https://user-images.githubusercontent.com/4650950/76578910-7be21c80-6487-11ea-9a0a-587d59bc5f80.png" /> <img width="180" src="https://user-images.githubusercontent.com/4650950/76578908-7b498600-6487-11ea-8994-ee7b6eb9cdb1.png" /> <img width="180" src="https://user-images.githubusercontent.com/4650950/76578907-7b498600-6487-11ea-8941-8f582bf87fb0.png" />
+<img width="180" src=".github/images/screenshot2.png" /> <img width="180" src=".github/images/screenshot4.png" /> <img width="180" src=".github/images/screenshot3.png" /> <img width="180" src=".github/images/screenshot5.png" />
 
 
 Getting started
@@ -98,7 +98,6 @@ maxexpiry = 86400
 | ```refererpolicy = "..."```                 | Referrer-Policy header for pages (default is "same-origin")                                                                                                                                                                                                                            |
 | ```filereferrerpolicy = "..."```            | Referrer-Policy header for files (default is "same-origin")                                                                                                                                                                                                                            |
 | ```xframeoptions = "..." ```                | X-Frame-Options header (default is "SAMEORIGIN")                                                                                                                                                                                                                                       |
-| ```remoteuploads = true```                  | (optionally) enable remote uploads (/upload?url=https://...)                                                                                                                                                                                                                           |
 | ```nologs = true```                         | (optionally) disable request logs in stdout                                                                                                                                                                                                                                            |
 | ```custompagespath = custom_pages/```       | (optionally) specify path to directory containing markdown pages (must end in .md) that will be added to the site navigation (this can be useful for providing contact/support information and so on). For example, custom_pages/My_Page.md will become My Page in the site navigation |
 | ```forbidden-extension = exe```             | Restrict uploading files with extension (e.g. exe). This option can be used multiple times.                                                                                                                                                                                            |
@@ -112,16 +111,6 @@ minutes. This can also be done using a separate utility found the linx-cleanup d
 | Option                          | Description                                                                                                              |
 |---------------------------------|--------------------------------------------------------------------------------------------------------------------------|
 | ```cleanup-every-minutes = 5``` | How often to clean up expired files in minutes (default is 0, which means files will be cleaned up as they are accessed) |
-
-#### Require API Keys for uploads
-
-| Option                                        | Description                                                                                                                                                                                                                              |
-|-----------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| ```authfile = path/to/authfile```             | (optionally) require authorization for upload/delete by providing a newline-separated file of scrypted auth keys                                                                                                                         |
-| ```remoteauthfile = path/to/remoteauthfile``` | (optionally) require authorization for remote uploads by providing a newline-separated file of scrypted auth keys                                                                                                                        |
-| ```basicauth = true```                        | (optionally) allow basic authorization to upload or paste files from browser when `-authfile` is enabled. When uploading, you will be prompted to enter a user and password - leave the user blank and use your auth key as the password |
-
-A helper utility ```linx-genkey``` is provided which hashes keys to the format required in the auth files.
 
 #### Storage backends
 
@@ -210,6 +199,10 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-Author
+Original Author
 -------
 Andrei Marcu, https://andreim.net/
+
+Current Maintainer
+------------------
+Dmytro Manchynskyi (https://github.com/xtrafrancyz) since 2020.

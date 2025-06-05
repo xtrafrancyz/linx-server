@@ -10,7 +10,6 @@ import (
 	"net/url"
 	"os"
 	"path"
-	"runtime"
 	"strconv"
 	"strings"
 	"testing"
@@ -109,51 +108,6 @@ func TestAddHeader(t *testing.T) {
 	if w.Header().Get("Linx-Test") != "It works!" {
 		t.Fatal("Header 'Linx-Test: It works!' not found in index response")
 	}
-}
-
-func TestAuthKeys(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		Config.authFile = "nul"
-	} else {
-		Config.authFile = "/dev/null"
-	}
-
-	redirects := []string{
-		"/",
-		"/paste/",
-	}
-
-	mux := setup()
-
-	for _, v := range redirects {
-		w := httptest.NewRecorder()
-
-		req, err := http.NewRequest("GET", v, nil)
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		mux.ServeHTTP(w, req)
-
-		if w.Code != 303 {
-			t.Fatalf("Status code is not 303, but %d", w.Code)
-		}
-	}
-
-	w := httptest.NewRecorder()
-
-	req, err := http.NewRequest("POST", "/paste/", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	mux.ServeHTTP(w, req)
-
-	if w.Code != 401 {
-		t.Fatalf("Status code is not 401, but %d", w.Code)
-	}
-
-	Config.authFile = ""
 }
 
 func TestNotFound(t *testing.T) {
@@ -1048,6 +1002,7 @@ func TestPutAndGetCLI(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36")
 	mux.ServeHTTP(w, req)
 
 	contentType := w.Header().Get("Content-Type")

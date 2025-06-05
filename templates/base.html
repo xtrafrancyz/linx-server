@@ -18,10 +18,8 @@
 			<div id="header">
 				<h2><a href="{{ sitepath }}" title="{{ sitename }}">{{ sitename }}</a></h2>
 				<div id="navigation">
-					{% if auth != "header" %}
 					<a href="{{ sitepath }}">Upload</a> |
 					<a href="{{ sitepath }}paste/">Paste</a> |
-					{% endif %}
 					<a href="{{ sitepath }}API/">API</a>
 					{% for custom_file_name, custom_page_name in custom_pages_names sorted %}
 					| <a href="{{ sitepath }}{{ custom_file_name }}/">{{ custom_page_name }}</a>

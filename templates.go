@@ -2,8 +2,9 @@ package main
 
 import (
 	"bytes"
+	"errors"
+	"github.com/labstack/echo/v4"
 	"io"
-	"net/http"
 	"path"
 	"path/filepath"
 	"strings"
@@ -12,10 +13,13 @@ import (
 )
 
 type Pongo2Loader struct {
+	parsed map[string]*pongo2.Template
 }
 
 func NewPongo2TemplatesLoader() (*Pongo2Loader, error) {
-	return &Pongo2Loader{}, nil
+	loader := &Pongo2Loader{}
+	err := loader.compile()
+	return loader, err
 }
 
 func (fs *Pongo2Loader) Get(path string) (io.Reader, error) {
@@ -28,11 +32,10 @@ func (fs *Pongo2Loader) Get(path string) (io.Reader, error) {
 }
 
 func (fs *Pongo2Loader) Abs(base, name string) string {
-	me := path.Join(filepath.Dir(base), name)
-	return me
+	return path.Join(filepath.Dir(base), name)
 }
 
-func populateTemplatesMap(tSet *pongo2.TemplateSet, tMap map[string]*pongo2.Template) error {
+func (fs *Pongo2Loader) compile() error {
 	templates := []string{
 		"index.html",
 		"paste.html",
@@ -54,21 +57,35 @@ func populateTemplatesMap(tSet *pongo2.TemplateSet, tMap map[string]*pongo2.Temp
 		"display/file.html",
 	}
 
+	fs.parsed = make(map[string]*pongo2.Template)
+
+	tSet := pongo2.NewSet("templates", fs)
+
 	for _, tName := range templates {
 		tpl, err := tSet.FromFile(tName)
 		if err != nil {
 			return err
 		}
 
-		tMap[tName] = tpl
+		fs.parsed[tName] = tpl
 	}
 
 	return nil
 }
 
-func renderTemplate(tpl *pongo2.Template, context pongo2.Context, r *http.Request, writer io.Writer) error {
+func (fs *Pongo2Loader) Render(w io.Writer, name string, data interface{}, c echo.Context) error {
+	tpl, ok := fs.parsed[name]
+	if !ok {
+		return errors.New("Template not found: " + name)
+	}
+
+	var context pongo2.Context
+	if context, ok = data.(pongo2.Context); !ok {
+		context = pongo2.Context{}
+	}
+
 	if Config.siteName == "" {
-		parts := strings.Split(r.Host, ":")
+		parts := strings.Split(c.Request().Host, ":")
 		context["sitename"] = parts[0]
 	} else {
 		context["sitename"] = Config.siteName
@@ -78,15 +95,5 @@ func renderTemplate(tpl *pongo2.Template, context pongo2.Context, r *http.Reques
 	context["selifpath"] = Config.selifPath
 	context["custom_pages_names"] = customPagesNames
 
-	var a string
-	if Config.authFile == "" {
-		a = "none"
-	} else if Config.basicAuth {
-		a = "basic"
-	} else {
-		a = "header"
-	}
-	context["auth"] = a
-
-	return tpl.ExecuteWriter(context, writer)
+	return tpl.ExecuteWriter(context, w)
 }

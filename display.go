@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"io"
 	"net/http"
 	"path/filepath"
@@ -13,26 +12,28 @@ import (
 	"github.com/andreimarcu/linx-server/expiry"
 	"github.com/dustin/go-humanize"
 	"github.com/flosch/pongo2/v5"
+	"github.com/labstack/echo/v4"
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/russross/blackfriday"
-	"github.com/zenazn/goji/web"
 )
 
 const maxDisplayFileSizeBytes = 1024 * 512
 
-func fileDisplayHandler(c web.C, w http.ResponseWriter, r *http.Request, fileName string, metadata backends.Metadata) {
+func fileDisplayHandler(c echo.Context, fileName string, metadata backends.Metadata) error {
+	r := c.Request()
+
 	var expiryHuman string
 	if metadata.Expiry != expiry.NeverExpire {
 		expiryHuman = humanize.RelTime(time.Now(), metadata.Expiry, "", "")
 	}
 	sizeHuman := humanize.Bytes(uint64(metadata.Size))
 	extra := make(map[string]string)
-	lines := []string{}
+	var lines []string
 
 	extension := strings.TrimPrefix(filepath.Ext(fileName), ".")
 
 	if strings.EqualFold("application/json", r.Header.Get("Accept")) {
-		js, _ := json.Marshal(map[string]string{
+		return c.JSON(http.StatusOK, map[string]string{
 			"original_name": metadata.OriginalName,
 			"filename":      fileName,
 			"direct_url":    getSiteURL(r) + Config.selifPath + fileName,
@@ -41,29 +42,26 @@ func fileDisplayHandler(c web.C, w http.ResponseWriter, r *http.Request, fileNam
 			"mimetype":      metadata.Mimetype,
 			"sha256sum":     metadata.Sha256sum,
 		})
-		w.Write(js)
-		return
 	}
 
-	var tpl *pongo2.Template
+	var tpl string
 
 	if strings.HasPrefix(metadata.Mimetype, "image/") {
-		tpl = Templates["display/image.html"]
+		tpl = "display/image.html"
 
 	} else if strings.HasPrefix(metadata.Mimetype, "video/") {
-		tpl = Templates["display/video.html"]
+		tpl = "display/video.html"
 
 	} else if strings.HasPrefix(metadata.Mimetype, "audio/") {
-		tpl = Templates["display/audio.html"]
+		tpl = "display/audio.html"
 
 	} else if metadata.Mimetype == "application/pdf" {
-		tpl = Templates["display/pdf.html"]
+		tpl = "display/pdf.html"
 
 	} else if extension == "story" {
 		metadata, reader, err := storageBackend.Get(fileName)
 		if err != nil {
-			oopsHandler(c, w, r, RespHTML, err.Error())
-			return
+			return oopsHandler(c, RespHTML, err.Error())
 		}
 		defer reader.Close()
 
@@ -72,15 +70,14 @@ func fileDisplayHandler(c web.C, w http.ResponseWriter, r *http.Request, fileNam
 			if err == nil {
 				extra["contents"] = string(bytes)
 				lines = strings.Split(extra["contents"], "\n")
-				tpl = Templates["display/story.html"]
+				tpl = "display/story.html"
 			}
 		}
 
 	} else if extension == "md" {
 		metadata, reader, err := storageBackend.Get(fileName)
 		if err != nil {
-			oopsHandler(c, w, r, RespHTML, err.Error())
-			return
+			return oopsHandler(c, RespHTML, err.Error())
 		}
 		defer reader.Close()
 
@@ -91,15 +88,14 @@ func fileDisplayHandler(c web.C, w http.ResponseWriter, r *http.Request, fileNam
 				html := bluemonday.UGCPolicy().SanitizeBytes(unsafe)
 
 				extra["contents"] = string(html)
-				tpl = Templates["display/md.html"]
+				tpl = "display/md.html"
 			}
 		}
 
 	} else if strings.HasPrefix(metadata.Mimetype, "text/") || supportedBinExtension(extension) {
 		metadata, reader, err := storageBackend.Get(fileName)
 		if err != nil {
-			oopsHandler(c, w, r, RespHTML, err.Error())
-			return
+			return oopsHandler(c, RespHTML, err.Error())
 		}
 		defer reader.Close()
 
@@ -109,21 +105,21 @@ func fileDisplayHandler(c web.C, w http.ResponseWriter, r *http.Request, fileNam
 				extra["extension"] = extension
 				extra["lang_hl"] = extensionToHlLang(extension)
 				extra["contents"] = string(bytes)
-				tpl = Templates["display/bin.html"]
+				tpl = "display/bin.html"
 			}
 		}
 	}
 
 	// Catch other files
-	if tpl == nil {
-		tpl = Templates["display/file.html"]
+	if tpl == "" {
+		tpl = "display/file.html"
 	}
 
 	if metadata.OriginalName == "" {
 		metadata.OriginalName = fileName
 	}
 
-	err := renderTemplate(tpl, pongo2.Context{
+	return c.Render(http.StatusOK, tpl, pongo2.Context{
 		"mime":           metadata.Mimetype,
 		"original_name":  metadata.OriginalName,
 		"filename":       fileName,
@@ -135,9 +131,5 @@ func fileDisplayHandler(c web.C, w http.ResponseWriter, r *http.Request, fileNam
 		"files":          metadata.ArchiveFiles,
 		"siteurl":        strings.TrimSuffix(getSiteURL(r), "/"),
 		"keyless_delete": Config.anyoneCanDelete,
-	}, r, w)
-
-	if err != nil {
-		oopsHandler(c, w, r, RespHTML, "")
-	}
+	})
 }

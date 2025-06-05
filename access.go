@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"errors"
 	"log"
 	"net/http"
@@ -13,7 +12,7 @@ import (
 
 	"github.com/andreimarcu/linx-server/backends"
 	"github.com/flosch/pongo2/v5"
-	"github.com/zenazn/goji/web"
+	"github.com/labstack/echo/v4"
 )
 
 type accessKeySource int
@@ -95,21 +94,21 @@ func setAccessKeyCookies(w http.ResponseWriter, siteURL, fileName, value string,
 	http.SetCookie(w, &cookie)
 }
 
-func fileAccessHandler(c web.C, w http.ResponseWriter, r *http.Request) {
+func fileAccessHandler(c echo.Context) error {
+	r := c.Request()
+	w := c.Response().Writer
+
 	if !Config.noDirectAgents && cliUserAgentRe.MatchString(r.Header.Get("User-Agent")) && !strings.EqualFold("application/json", r.Header.Get("Accept")) {
-		fileServeHandler(c, w, r)
-		return
+		return fileServeHandler(c)
 	}
 
-	fileName := c.URLParams["name"]
+	fileName := c.Param("name")
 
 	metadata, err := checkFile(fileName)
 	if err == backends.NotFoundErr {
-		notFoundHandler(c, w, r)
-		return
+		return notFoundHandler(c)
 	} else if err != nil {
-		oopsHandler(c, w, r, RespAUTO, "Corrupt metadata.")
-		return
+		return oopsHandler(c, RespAUTO, "Corrupt metadata.")
 	}
 
 	if src, err := checkAccessKey(r, &metadata); err != nil {
@@ -119,20 +118,15 @@ func fileAccessHandler(c web.C, w http.ResponseWriter, r *http.Request) {
 		}
 
 		if strings.EqualFold("application/json", r.Header.Get("Accept")) {
-			dec := json.NewEncoder(w)
-			_ = dec.Encode(map[string]string{
+			return c.JSON(http.StatusUnauthorized, map[string]string{
 				"error": errInvalidAccessKey.Error(),
 			})
-
-			return
 		}
 
-		_ = renderTemplate(Templates["access.html"], pongo2.Context{
+		return c.Render(http.StatusOK, "access.html", pongo2.Context{
 			"filename":   fileName,
 			"accesspath": fileName,
-		}, r, w)
-
-		return
+		})
 	}
 
 	if metadata.AccessKey != "" {
@@ -143,5 +137,5 @@ func fileAccessHandler(c web.C, w http.ResponseWriter, r *http.Request) {
 		setAccessKeyCookies(w, getSiteURL(r), fileName, metadata.AccessKey, expiry)
 	}
 
-	fileDisplayHandler(c, w, r, fileName, metadata)
+	return fileDisplayHandler(c, fileName, metadata)
 }

@@ -1,13 +1,11 @@
 package main
 
 import (
-	"encoding/json"
-	"fmt"
+	"github.com/labstack/echo/v4"
 	"net/http"
 	"strings"
 
 	"github.com/flosch/pongo2/v5"
-	"github.com/zenazn/goji/web"
 )
 
 type RespType int
@@ -19,122 +17,83 @@ const (
 	RespAUTO
 )
 
-func indexHandler(c web.C, w http.ResponseWriter, r *http.Request) {
-	err := renderTemplate(Templates["index.html"], pongo2.Context{
+func indexHandler(c echo.Context) error {
+	return c.Render(http.StatusOK, "index.html", pongo2.Context{
 		"maxsize":    Config.maxSize,
 		"expirylist": listExpirationTimes(),
-	}, r, w)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
+	})
 }
 
-func pasteHandler(c web.C, w http.ResponseWriter, r *http.Request) {
-	err := renderTemplate(Templates["paste.html"], pongo2.Context{
+func pasteHandler(c echo.Context) error {
+	return c.Render(http.StatusOK, "paste.html", pongo2.Context{
 		"expirylist": listExpirationTimes(),
-	}, r, w)
-	if err != nil {
-		oopsHandler(c, w, r, RespHTML, "")
-	}
+	})
 }
 
-func apiDocHandler(c web.C, w http.ResponseWriter, r *http.Request) {
-	err := renderTemplate(Templates["API.html"], pongo2.Context{
-		"siteurl":        getSiteURL(r),
+func apiDocHandler(c echo.Context) error {
+	return c.Render(http.StatusOK, "API.html", pongo2.Context{
+		"siteurl":        getSiteURL(c.Request()),
 		"keyless_delete": Config.anyoneCanDelete,
-	}, r, w)
-	if err != nil {
-		oopsHandler(c, w, r, RespHTML, "")
-	}
+	})
 }
 
-func makeCustomPageHandler(fileName string) func(c web.C, w http.ResponseWriter, r *http.Request) {
-	return func(c web.C, w http.ResponseWriter, r *http.Request) {
-		err := renderTemplate(Templates["custom_page.html"], pongo2.Context{
-			"siteurl":  getSiteURL(r),
+func makeCustomPageHandler(fileName string) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		return c.Render(http.StatusOK, "custom_page.html", pongo2.Context{
+			"siteurl":  getSiteURL(c.Request()),
 			"contents": customPages[fileName],
 			"filename": fileName,
 			"pagename": customPagesNames[fileName],
-		}, r, w)
-		if err != nil {
-			oopsHandler(c, w, r, RespHTML, "")
-		}
+		})
 	}
 }
 
-func notFoundHandler(c web.C, w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(404)
-	err := renderTemplate(Templates["404.html"], pongo2.Context{}, r, w)
-	if err != nil {
-		oopsHandler(c, w, r, RespHTML, "")
-	}
+func notFoundHandler(c echo.Context) error {
+	return c.Render(http.StatusNotFound, "404.html", nil)
 }
 
-func oopsHandler(c web.C, w http.ResponseWriter, r *http.Request, rt RespType, msg string) {
+func oopsHandler(c echo.Context, rt RespType, msg string) error {
 	if msg == "" {
 		msg = "Oops! Something went wrong..."
 	}
 
 	if rt == RespHTML {
-		w.WriteHeader(500)
-		renderTemplate(Templates["oops.html"], pongo2.Context{"msg": msg}, r, w)
-		return
+		return c.Render(500, "oops.html", pongo2.Context{"msg": msg})
 	} else if rt == RespPLAIN {
-		w.WriteHeader(500)
-		fmt.Fprintf(w, "%s", msg)
-		return
+		return c.String(500, msg)
 	} else if rt == RespJSON {
-		js, _ := json.Marshal(map[string]string{
+		return c.JSON(500, map[string]string{
 			"error": msg,
 		})
-
-		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-		w.WriteHeader(500)
-		w.Write(js)
-		return
 	} else if rt == RespAUTO {
-		if strings.EqualFold("application/json", r.Header.Get("Accept")) {
-			oopsHandler(c, w, r, RespJSON, msg)
+		if strings.EqualFold("application/json", c.Request().Header.Get("Accept")) {
+			return oopsHandler(c, RespJSON, msg)
 		} else {
-			oopsHandler(c, w, r, RespHTML, msg)
+			return oopsHandler(c, RespHTML, msg)
 		}
 	}
+	return nil
 }
 
-func badRequestHandler(c web.C, w http.ResponseWriter, r *http.Request, rt RespType, msg string) {
+func badRequestHandler(c echo.Context, rt RespType, msg string) error {
 	if rt == RespHTML {
-		w.WriteHeader(http.StatusBadRequest)
-		err := renderTemplate(Templates["400.html"], pongo2.Context{"msg": msg}, r, w)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		}
-		return
+		return c.Render(http.StatusBadRequest, "400.html", pongo2.Context{"msg": msg})
 	} else if rt == RespPLAIN {
-		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintf(w, "%s", msg)
-		return
+		return c.String(http.StatusBadRequest, msg)
 	} else if rt == RespJSON {
-		js, _ := json.Marshal(map[string]string{
+		return c.JSON(http.StatusBadRequest, map[string]string{
 			"error": msg,
 		})
-
-		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write(js)
-		return
 	} else if rt == RespAUTO {
-		if strings.EqualFold("application/json", r.Header.Get("Accept")) {
-			badRequestHandler(c, w, r, RespJSON, msg)
+		if strings.EqualFold("application/json", c.Request().Header.Get("Accept")) {
+			return badRequestHandler(c, RespJSON, msg)
 		} else {
-			badRequestHandler(c, w, r, RespHTML, msg)
+			return badRequestHandler(c, RespHTML, msg)
 		}
 	}
+	return nil
 }
 
-func unauthorizedHandler(c web.C, w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(401)
-	err := renderTemplate(Templates["401.html"], pongo2.Context{}, r, w)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
+func unauthorizedHandler(c echo.Context) error {
+	return c.Render(http.StatusUnauthorized, "401.html", nil)
 }

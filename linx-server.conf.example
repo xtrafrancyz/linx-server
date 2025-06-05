@@ -6,6 +6,5 @@ selifpath = s
 maxsize = 4294967296
 maxexpiry = 86400
 allowhotlink = true
-remoteuploads = true
 nologs = true
 cleanup-every-minutes = 5

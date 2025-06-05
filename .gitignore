@@ -31,10 +31,8 @@ _testmain.go
 
 linx-server
 linx-cleanup/linx-cleanup
-linx-genkey/linx-genkey
 linx-server.conf
 files/
 meta/
 binaries/
 custom_pages/
-authfile
