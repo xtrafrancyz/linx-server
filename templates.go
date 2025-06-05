@@ -55,6 +55,7 @@ func (fs *Pongo2Loader) compile() error {
 		"display/story.html",
 		"display/md.html",
 		"display/file.html",
+		"display/bbmodel.html",
 	}
 
 	fs.parsed = make(map[string]*pongo2.Template)

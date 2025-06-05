@@ -13,6 +13,7 @@ import (
 
 	"github.com/andreimarcu/linx-server/backends"
 	"github.com/andreimarcu/linx-server/expiry"
+	"github.com/andreimarcu/linx-server/helpers"
 	"github.com/dchest/uniuri"
 	"github.com/gabriel-vasile/mimetype"
 	"github.com/labstack/echo/v4"
@@ -166,7 +167,7 @@ func processUpload(upReq UploadRequest) (upload Upload, err error) {
 	var header []byte
 	if len(extension) == 0 {
 		// Pull the first 512 bytes off for use in MIME detection
-		header = make([]byte, 512)
+		header = make([]byte, helpers.MimetypeDetectLimit)
 		n, _ := upReq.src.Read(header)
 		if n == 0 {
 			return upload, backends.FileEmptyError

@@ -72,4 +72,5 @@ var extensionToHl = map[string]string{
 	"xml":         "xml",
 	"yaml":        "yaml",
 	"yml":         "yaml",
+	"bbmodel":     "json",
 }

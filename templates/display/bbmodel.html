@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+
+{% block main %}
+<div class="normal display-file">
+    <p class="center">You are requesting <a href="{{ sitepath }}{{ selifpath }}{{ filename }}">{{ original_name }}</a>,
+        click below to download.</p>
+    <a href="{{ sitepath }}{{ selifpath }}{{ filename }}" class="download-btn">Download</a>
+
+    <a href="{{ sitepath }}{{ filename }}?blockbench_redirect=1" class="download-btn" style="width:290px; margin-top: 10px;">
+        Open in Blockbench
+    </a>
+</div>
+{% endblock %}

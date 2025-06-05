@@ -11,6 +11,20 @@ import (
 	"github.com/minio/sha256-simd"
 )
 
+var MimetypeDetectLimit uint32 = 3072
+
+func RegisterCustomMimeTypes() {
+	mimetype.SetLimit(MimetypeDetectLimit)
+	mimetype.Lookup("application/json").Extend(func(raw []byte, limit uint32) bool {
+		// parse json? nah, just check for some keys
+		return bytes.Contains(raw, []byte(`"meta"`)) &&
+			bytes.Contains(raw, []byte(`"format_version"`)) &&
+			bytes.Contains(raw, []byte(`"model_format"`)) &&
+			bytes.Contains(raw, []byte(`"model_identifier"`)) &&
+			bytes.Contains(raw, []byte(`"visible_box"`))
+	}, "application/vnd.blobkbench.bbmodel+json", "bbmodel")
+}
+
 func GenerateMetadata(r io.Reader) (m backends.Metadata, err error) {
 	// Since we don't have the ability to seek within a file, we can use a
 	// Buffer in combination with a TeeReader to keep a copy of the bytes
@@ -19,8 +33,8 @@ func GenerateMetadata(r io.Reader) (m backends.Metadata, err error) {
 	var buf bytes.Buffer
 	teeReader := io.TeeReader(r, &buf)
 
-	// Get first 512 bytes for mimetype detection
-	header := make([]byte, 512)
+	// Get first MimetypeDetectLimit bytes for mimetype detection
+	header := make([]byte, MimetypeDetectLimit)
 	headerLen, err := teeReader.Read(header)
 	if err != nil {
 		return

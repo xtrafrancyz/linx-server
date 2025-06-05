@@ -58,6 +58,9 @@ func fileDisplayHandler(c echo.Context, fileName string, metadata backends.Metad
 	} else if metadata.Mimetype == "application/pdf" {
 		tpl = "display/pdf.html"
 
+	} else if metadata.Mimetype == "application/vnd.blobkbench.bbmodel+json" {
+		tpl = "display/bbmodel.html"
+
 	} else if extension == "story" {
 		metadata, reader, err := storageBackend.Get(fileName)
 		if err != nil {

@@ -19,6 +19,7 @@ import (
 	"github.com/andreimarcu/linx-server/backends/localfs"
 	"github.com/andreimarcu/linx-server/backends/s3"
 	"github.com/andreimarcu/linx-server/cleanup"
+	"github.com/andreimarcu/linx-server/helpers"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/vharitonsky/iniflags"
@@ -241,6 +242,7 @@ func setup() *echo.Echo {
 				return
 			}
 		}
+		log.Printf("Error: %v", err)
 		e.DefaultHTTPErrorHandler(err, c)
 	}
 
@@ -315,6 +317,7 @@ func main() {
 
 	iniflags.Parse()
 
+	helpers.RegisterCustomMimeTypes()
 	e := setup()
 
 	if Config.fastcgi {

@@ -1,7 +1,11 @@
 package main
 
 import (
+	"bytes"
+	"context"
+	"encoding/json"
 	"errors"
+	"io"
 	"log"
 	"net/http"
 	"net/url"
@@ -137,5 +141,58 @@ func fileAccessHandler(c echo.Context) error {
 		setAccessKeyCookies(w, getSiteURL(r), fileName, metadata.AccessKey, expiry)
 	}
 
+	if c.QueryParam("blockbench_redirect") == "1" {
+		return redirectBlockbenchHandler(c, fileName, metadata)
+	}
+
 	return fileDisplayHandler(c, fileName, metadata)
+}
+
+func redirectBlockbenchHandler(c echo.Context, fileName string, metadata backends.Metadata) error {
+	if metadata.Mimetype != "application/vnd.blobkbench.bbmodel+json" {
+		return oopsHandler(c, RespHTML, "Invalid .bbmodel file.")
+	}
+	if metadata.Size > 10*1024*1024 { // 10 MB limit
+		return oopsHandler(c, RespHTML, "File too large for Blockbench upload.")
+	}
+
+	metadata, reader, err := storageBackend.Get(fileName)
+	if err != nil {
+		return oopsHandler(c, RespHTML, err.Error())
+	}
+	defer reader.Close()
+
+	data, err := io.ReadAll(reader)
+	if err != nil {
+		return oopsHandler(c, RespHTML, "Failed to read file: "+err.Error())
+	}
+
+	uploadBody, _ := json.Marshal(map[string]string{
+		"expire_time": "10m",
+		"model":       string(data),
+		"name":        metadata.OriginalName,
+	})
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	req, _ := http.NewRequestWithContext(ctx, "POST", "https://blckbn.ch/api/model", bytes.NewReader(uploadBody))
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return oopsHandler(c, RespHTML, "Failed to upload to Blockbench: "+err.Error())
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return oopsHandler(c, RespHTML, "Blockbench upload failed with status: "+resp.Status)
+	}
+	var result map[string]string
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return oopsHandler(c, RespHTML, "Failed to parse Blockbench response: "+err.Error())
+	}
+	if result["text"] == "Model uploaded successfully" {
+		redirectURL := "https://blckbn.ch/" + result["id"]
+		return c.Redirect(http.StatusSeeOther, redirectURL)
+	} else {
+		return oopsHandler(c, RespHTML, "Blockbench upload failed: "+result["text"])
+	}
 }
