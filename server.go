@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/fcgi"
+	_ "net/http/pprof"
 	"net/url"
 	"os"
 	"os/signal"
@@ -69,6 +70,7 @@ var Config struct {
 	customPagesDir            string
 	cleanupEveryMinutes       uint64
 	forbiddenExtensions       headerList
+	pprofBind                 string
 }
 
 //go:embed static templates
@@ -306,19 +308,33 @@ func main() {
 		"Force path-style addressing for S3 (e.g. https://s3.amazonaws.com/linx/example.txt)")
 	flag.BoolVar(&Config.anyoneCanDelete, "anyone-can-delete", false,
 		"Anyone has delete button on the file page")
-	flag.Uint64Var(&Config.accessKeyCookieExpiry, "access-cookie-expiry", 0, "Expiration time for access key cookies in seconds (set 0 to use session cookies)")
+	flag.Uint64Var(&Config.accessKeyCookieExpiry, "access-cookie-expiry", 0,
+		"Expiration time for access key cookies in seconds (set 0 to use session cookies)")
 	flag.StringVar(&Config.customPagesDir, "custompagespath", "",
 		"path to directory containing .md files to render as custom pages")
 	flag.Uint64Var(&Config.cleanupEveryMinutes, "cleanup-every-minutes", 0,
 		"How often to clean up expired files in minutes (default is 0, which means files will be cleaned up as they are accessed)")
 	flag.Var(&Config.forbiddenExtensions, "forbidden-extension",
 		"Restrict uploading files with extension (e.g. exe). This option can be used multiple times.")
-	flag.Uint64Var(&Config.defaultExpiryCli, "default-expiry-cli", 0, "Default expiry time in seconds for cli uploads (set 0 to use max expiry)")
+	flag.Uint64Var(&Config.defaultExpiryCli, "default-expiry-cli", 0,
+		"Default expiry time in seconds for cli uploads (set 0 to use max expiry)")
+	flag.StringVar(&Config.pprofBind, "pprof-bind", "",
+		"Bind address for pprof (e.g. 127.0.0.1:6060)")
 
 	iniflags.Parse()
 
 	helpers.RegisterCustomMimeTypes()
 	e := setup()
+
+	if Config.pprofBind != "" {
+		go func() {
+			log.Printf("Starting pprof server on %s", Config.pprofBind)
+			err := http.ListenAndServe(Config.pprofBind, nil)
+			if err != nil {
+				log.Fatal("Could not start pprof server: ", err)
+			}
+		}()
+	}
 
 	if Config.fastcgi {
 		var listener net.Listener
