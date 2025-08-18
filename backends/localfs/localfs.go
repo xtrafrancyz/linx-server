@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path"
@@ -30,13 +29,11 @@ type MetadataJSON struct {
 	ArchiveFiles []string `json:"archive_files,omitempty"`
 }
 
-func (b LocalfsBackend) Delete(key string) (err error) {
-	err = os.Remove(path.Join(b.filesPath, key))
-	if err != nil {
-		return
-	}
-	err = os.Remove(path.Join(b.metaPath, key))
-	return
+func (b LocalfsBackend) Delete(key string) error {
+	return errors.Join(
+		os.Remove(path.Join(b.filesPath, key)),
+		os.Remove(path.Join(b.metaPath, key)),
+	)
 }
 
 func (b LocalfsBackend) Exists(key string) (bool, error) {
@@ -196,7 +193,7 @@ func (b LocalfsBackend) Size(key string) (int64, error) {
 func (b LocalfsBackend) List() ([]string, error) {
 	var output []string
 
-	files, err := ioutil.ReadDir(b.filesPath)
+	files, err := os.ReadDir(b.filesPath)
 	if err != nil {
 		return nil, err
 	}
