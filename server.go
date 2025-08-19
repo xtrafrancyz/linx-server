@@ -3,7 +3,6 @@ package main
 import (
 	"embed"
 	"flag"
-	"io/fs"
 	"log"
 	"net"
 	"net/http"
@@ -213,10 +212,16 @@ func setup() *echo.Echo {
 
 	g.DELETE("/:name", deleteHandler)
 
-	staticfs, _ := fs.Sub(staticEmbed, "static")
-	g.StaticFS("/static", staticfs)
-	g.FileFS("/favicon.ico", "static/images/favicon.gif", staticEmbed)
-	e.FileFS("/robots.txt", "static/robots.txt", staticEmbed)
+	staticMiddleware := AddHeaders([]string{"Cache-Control: public, max-age=1800"})
+	//g.StaticFS does not support middlewares
+	//g.StaticFS("/static/", echo.MustSubFS(staticEmbed, "static"))
+	g.GET(
+		"/static/*",
+		echo.StaticDirectoryHandler(echo.MustSubFS(staticEmbed, "static"), false),
+		staticMiddleware, // cache for 30 minutes
+	)
+	g.FileFS("/favicon.ico", "static/images/favicon.gif", staticEmbed, staticMiddleware)
+	e.FileFS("/robots.txt", "static/robots.txt", staticEmbed, staticMiddleware)
 
 	// For regex routes, we need to use Echo's regex route syntax
 	g.GET("/:name", fileAccessHandler)

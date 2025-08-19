@@ -1,20 +1,33 @@
 package main
 
 import (
-	"github.com/labstack/echo/v4"
 	"net/http"
 	"net/url"
 	"strings"
+
+	"github.com/labstack/echo/v4"
 )
 
 func AddHeaders(headers []string) echo.MiddlewareFunc {
+	type parsedHeader struct {
+		Key   string
+		Value string
+	}
+	parsed := make([]parsedHeader, len(headers))
+	for i, header := range headers {
+		headerSplit := strings.SplitN(header, ": ", 2)
+		if len(headerSplit) != 2 {
+			panic("Invalid header format: " + header)
+		}
+		parsed[i] = parsedHeader{headerSplit[0], headerSplit[1]}
+	}
+
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			w := c.Response().Writer
 
-			for _, header := range headers {
-				headerSplit := strings.SplitN(header, ": ", 2)
-				w.Header().Add(headerSplit[0], headerSplit[1])
+			for _, header := range parsed {
+				w.Header().Add(header.Key, header.Value)
 			}
 
 			return next(c)
