@@ -1,6 +1,8 @@
 package s3
 
 import (
+	"context"
+	"errors"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -10,20 +12,20 @@ import (
 
 	"github.com/andreimarcu/linx-server/backends"
 	"github.com/andreimarcu/linx-server/helpers"
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/s3"
-	"github.com/aws/aws-sdk-go/service/s3/s3manager"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 )
 
 type S3Backend struct {
 	bucket string
-	svc    *s3.S3
+	svc    *s3.Client
 }
 
 func (b S3Backend) Delete(key string) error {
-	_, err := b.svc.DeleteObject(&s3.DeleteObjectInput{
+	_, err := b.svc.DeleteObject(context.TODO(), &s3.DeleteObjectInput{
 		Bucket: aws.String(b.bucket),
 		Key:    aws.String(key),
 	})
@@ -34,7 +36,7 @@ func (b S3Backend) Delete(key string) error {
 }
 
 func (b S3Backend) Exists(key string) (bool, error) {
-	_, err := b.svc.HeadObject(&s3.HeadObjectInput{
+	_, err := b.svc.HeadObject(context.TODO(), &s3.HeadObjectInput{
 		Bucket: aws.String(b.bucket),
 		Key:    aws.String(key),
 	})
@@ -43,15 +45,15 @@ func (b S3Backend) Exists(key string) (bool, error) {
 
 func (b S3Backend) Head(key string) (metadata backends.Metadata, err error) {
 	var result *s3.HeadObjectOutput
-	result, err = b.svc.HeadObject(&s3.HeadObjectInput{
+	result, err = b.svc.HeadObject(context.TODO(), &s3.HeadObjectInput{
 		Bucket: aws.String(b.bucket),
 		Key:    aws.String(key),
 	})
 	if err != nil {
-		if aerr, ok := err.(awserr.Error); ok {
-			if aerr.Code() == s3.ErrCodeNoSuchKey || aerr.Code() == "NotFound" {
-				err = backends.NotFoundErr
-			}
+		var nsk *types.NoSuchKey
+		var nf *types.NotFound
+		if errors.As(err, &nsk) || errors.As(err, &nf) {
+			err = backends.NotFoundErr
 		}
 		return
 	}
@@ -62,15 +64,15 @@ func (b S3Backend) Head(key string) (metadata backends.Metadata, err error) {
 
 func (b S3Backend) Get(key string) (metadata backends.Metadata, r io.ReadCloser, err error) {
 	var result *s3.GetObjectOutput
-	result, err = b.svc.GetObject(&s3.GetObjectInput{
+	result, err = b.svc.GetObject(context.TODO(), &s3.GetObjectInput{
 		Bucket: aws.String(b.bucket),
 		Key:    aws.String(key),
 	})
 	if err != nil {
-		if aerr, ok := err.(awserr.Error); ok {
-			if aerr.Code() == s3.ErrCodeNoSuchKey || aerr.Code() == "NotFound" {
-				err = backends.NotFoundErr
-			}
+		var nsk *types.NoSuchKey
+		var nf *types.NotFound
+		if errors.As(err, &nsk) || errors.As(err, &nf) {
+			err = backends.NotFoundErr
 		}
 		return
 	}
@@ -84,7 +86,7 @@ func (b S3Backend) ServeFile(key string, w http.ResponseWriter, r *http.Request)
 	var result *s3.GetObjectOutput
 
 	if r.Header.Get("Range") != "" {
-		result, err = b.svc.GetObject(&s3.GetObjectInput{
+		result, err = b.svc.GetObject(context.TODO(), &s3.GetObjectInput{
 			Bucket: aws.String(b.bucket),
 			Key:    aws.String(key),
 			Range:  aws.String(r.Header.Get("Range")),
@@ -96,7 +98,7 @@ func (b S3Backend) ServeFile(key string, w http.ResponseWriter, r *http.Request)
 		w.Header().Set("Accept-Ranges", "bytes")
 
 	} else {
-		result, err = b.svc.GetObject(&s3.GetObjectInput{
+		result, err = b.svc.GetObject(context.TODO(), &s3.GetObjectInput{
 			Bucket: aws.String(b.bucket),
 			Key:    aws.String(key),
 		})
@@ -104,10 +106,10 @@ func (b S3Backend) ServeFile(key string, w http.ResponseWriter, r *http.Request)
 	}
 
 	if err != nil {
-		if aerr, ok := err.(awserr.Error); ok {
-			if aerr.Code() == s3.ErrCodeNoSuchKey || aerr.Code() == "NotFound" {
-				err = backends.NotFoundErr
-			}
+		var nsk *types.NoSuchKey
+		var nf *types.NotFound
+		if errors.As(err, &nsk) || errors.As(err, &nf) {
+			err = backends.NotFoundErr
 		}
 		return
 	}
@@ -117,41 +119,41 @@ func (b S3Backend) ServeFile(key string, w http.ResponseWriter, r *http.Request)
 	return
 }
 
-func mapMetadata(m backends.Metadata) map[string]*string {
-	return map[string]*string{
-		"OriginalName": aws.String(m.OriginalName),
-		"Expiry":        aws.String(strconv.FormatInt(m.Expiry.Unix(), 10)),
-		"Deletekey":    aws.String(m.DeleteKey),
-		"Size":          aws.String(strconv.FormatInt(m.Size, 10)),
-		"Mimetype":      aws.String(m.Mimetype),
-		"Sha256sum":     aws.String(m.Sha256sum),
-		"AccessKey":     aws.String(m.AccessKey),
+func mapMetadata(m backends.Metadata) map[string]string {
+	return map[string]string{
+		"OriginalName": m.OriginalName,
+		"Expiry":       strconv.FormatInt(m.Expiry.Unix(), 10),
+		"Deletekey":    m.DeleteKey,
+		"Size":         strconv.FormatInt(m.Size, 10),
+		"Mimetype":     m.Mimetype,
+		"Sha256sum":    m.Sha256sum,
+		"AccessKey":    m.AccessKey,
 	}
 }
 
-func unmapMetadata(input map[string]*string) (m backends.Metadata, err error) {
-	expiry, err := strconv.ParseInt(aws.StringValue(input["Expiry"]), 10, 64)
+func unmapMetadata(input map[string]string) (m backends.Metadata, err error) {
+	expiry, err := strconv.ParseInt(input["Expiry"], 10, 64)
 	if err != nil {
 		return m, err
 	}
 	m.Expiry = time.Unix(expiry, 0)
 
-	m.Size, err = strconv.ParseInt(aws.StringValue(input["Size"]), 10, 64)
+	m.Size, err = strconv.ParseInt(input["Size"], 10, 64)
 	if err != nil {
 		return
 	}
 
-	m.DeleteKey = aws.StringValue(input["Deletekey"])
+	m.DeleteKey = input["Deletekey"]
 	if m.DeleteKey == "" {
-		m.DeleteKey = aws.StringValue(input["Delete_key"])
+		m.DeleteKey = input["Delete_key"]
 	}
 
-	m.OriginalName = aws.StringValue(input["OriginalName"])
-	m.Mimetype = aws.StringValue(input["Mimetype"])
-	m.Sha256sum = aws.StringValue(input["Sha256sum"])
+	m.OriginalName = input["OriginalName"]
+	m.Mimetype = input["Mimetype"]
+	m.Sha256sum = input["Sha256sum"]
 
 	if key, ok := input["AccessKey"]; ok {
-		m.AccessKey = aws.StringValue(key)
+		m.AccessKey = key
 	}
 	return
 }
@@ -192,14 +194,14 @@ func (b S3Backend) Put(key, originalName string, r io.Reader, expiry time.Time, 
 		return m, err
 	}
 
-	uploader := s3manager.NewUploaderWithClient(b.svc)
-	input := &s3manager.UploadInput{
+	uploader := manager.NewUploader(b.svc)
+	input := &s3.PutObjectInput{
 		Bucket:   aws.String(b.bucket),
 		Key:      aws.String(key),
 		Body:     tmpDst,
 		Metadata: mapMetadata(m),
 	}
-	_, err = uploader.Upload(input)
+	_, err = uploader.Upload(context.TODO(), input)
 	if err != nil {
 		return
 	}
@@ -208,12 +210,12 @@ func (b S3Backend) Put(key, originalName string, r io.Reader, expiry time.Time, 
 }
 
 func (b S3Backend) PutMetadata(key string, m backends.Metadata) (err error) {
-	_, err = b.svc.CopyObject(&s3.CopyObjectInput{
+	_, err = b.svc.CopyObject(context.TODO(), &s3.CopyObjectInput{
 		Bucket:            aws.String(b.bucket),
 		Key:               aws.String(key),
 		CopySource:        aws.String("/" + b.bucket + "/" + key),
 		Metadata:          mapMetadata(m),
-		MetadataDirective: aws.String("REPLACE"),
+		MetadataDirective: types.MetadataDirectiveReplace,
 	})
 	if err != nil {
 		return
@@ -227,7 +229,7 @@ func (b S3Backend) Size(key string) (int64, error) {
 		Bucket: aws.String(b.bucket),
 		Key:    aws.String(key),
 	}
-	result, err := b.svc.HeadObject(input)
+	result, err := b.svc.HeadObject(context.TODO(), input)
 	if err != nil {
 		return 0, err
 	}
@@ -241,7 +243,7 @@ func (b S3Backend) List() ([]string, error) {
 		Bucket: aws.String(b.bucket),
 	}
 
-	results, err := b.svc.ListObjects(input)
+	results, err := b.svc.ListObjects(context.TODO(), input)
 	if err != nil {
 		return nil, err
 	}
@@ -254,18 +256,29 @@ func (b S3Backend) List() ([]string, error) {
 }
 
 func NewS3Backend(bucket string, region string, endpoint string, forcePathStyle bool) S3Backend {
-	awsConfig := &aws.Config{}
-	if region != "" {
-		awsConfig.Region = aws.String(region)
-	}
-	if endpoint != "" {
-		awsConfig.Endpoint = aws.String(endpoint)
-	}
-	if forcePathStyle == true {
-		awsConfig.S3ForcePathStyle = aws.Bool(true)
+	ctx := context.TODO()
+
+	// Load default config
+	cfg, err := config.LoadDefaultConfig(ctx, func(opts *config.LoadOptions) error {
+		if region != "" {
+			opts.Region = region
+		}
+		return nil
+	})
+
+	if err != nil {
+		panic(err)
 	}
 
-	sess := session.Must(session.NewSession(awsConfig))
-	svc := s3.New(sess)
+	// Create S3 client with optional customizations
+	svc := s3.NewFromConfig(cfg, func(o *s3.Options) {
+		if endpoint != "" {
+			o.BaseEndpoint = aws.String(endpoint)
+		}
+		if forcePathStyle {
+			o.UsePathStyle = true
+		}
+	})
+
 	return S3Backend{bucket: bucket, svc: svc}
 }
