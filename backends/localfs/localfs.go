@@ -218,15 +218,27 @@ func (b LocalfsBackend) Size(ctx context.Context, key string) (int64, error) {
 }
 
 func (b LocalfsBackend) List(ctx context.Context) ([]string, error) {
-	var output []string
+	seen := make(map[string]bool)
 
 	files, err := os.ReadDir(b.filesPath)
 	if err != nil {
 		return nil, err
 	}
-
 	for _, file := range files {
-		output = append(output, file.Name())
+		seen[file.Name()] = true
+	}
+
+	metaFiles, err := os.ReadDir(b.metaPath)
+	if err != nil {
+		return nil, err
+	}
+	for _, file := range metaFiles {
+		seen[file.Name()] = true
+	}
+
+	var output []string
+	for name := range seen {
+		output = append(output, name)
 	}
 
 	return output, nil
