@@ -3,6 +3,7 @@ package localfs
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -11,11 +12,13 @@ import (
 
 	"github.com/andreimarcu/linx-server/backends"
 	"github.com/andreimarcu/linx-server/helpers"
+	"github.com/shirou/gopsutil/v4/disk"
 )
 
 type LocalfsBackend struct {
-	metaPath  string
-	filesPath string
+	metaPath       string
+	filesPath      string
+	minFreeSpaceGB float64
 }
 
 type MetadataJSON struct {
@@ -132,6 +135,20 @@ func (b LocalfsBackend) writeMetadata(key string, metadata backends.Metadata) er
 }
 
 func (b LocalfsBackend) Put(key, originalName string, r io.Reader, expiry time.Time, deleteKey, accessKey string) (m backends.Metadata, err error) {
+	var cachedUsage *disk.UsageStat
+	minFreeBytes := uint64(b.minFreeSpaceGB * 1024 * 1024 * 1024)
+	if b.minFreeSpaceGB > 0 {
+		cachedUsage, err = disk.Usage(b.filesPath)
+		if err != nil {
+			return m, fmt.Errorf("failed to check disk usage: %w", err)
+		}
+
+		if cachedUsage.Free < minFreeBytes {
+			return m, fmt.Errorf("insufficient disk space: %.2f GB free, minimum required is %.2f GB",
+				float64(cachedUsage.Free)/(1024*1024*1024), b.minFreeSpaceGB)
+		}
+	}
+
 	filePath := path.Join(b.filesPath, key)
 
 	dst, err := os.Create(filePath)
@@ -147,6 +164,15 @@ func (b LocalfsBackend) Put(key, originalName string, r io.Reader, expiry time.T
 	} else if err != nil {
 		os.Remove(filePath)
 		return m, err
+	}
+
+	if b.minFreeSpaceGB > 0 {
+		freeAfterUpload := cachedUsage.Free - uint64(bytes)
+		if freeAfterUpload < minFreeBytes {
+			os.Remove(filePath)
+			return m, fmt.Errorf("insufficient disk space: would have %.2f GB free after upload, minimum required is %.2f GB",
+				float64(freeAfterUpload)/(1024*1024*1024), b.minFreeSpaceGB)
+		}
 	}
 
 	dst.Seek(0, 0)
@@ -205,9 +231,10 @@ func (b LocalfsBackend) List() ([]string, error) {
 	return output, nil
 }
 
-func NewLocalfsBackend(metaPath string, filesPath string) LocalfsBackend {
+func NewLocalfsBackend(metaPath string, filesPath string, minFreeSpaceGB float64) LocalfsBackend {
 	return LocalfsBackend{
-		metaPath:  metaPath,
-		filesPath: filesPath,
+		metaPath:       metaPath,
+		filesPath:      filesPath,
+		minFreeSpaceGB: minFreeSpaceGB,
 	}
 }

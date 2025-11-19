@@ -9,7 +9,7 @@ import (
 )
 
 func Cleanup(filesDir string, metaDir string, noLogs bool) {
-	fileBackend := localfs.NewLocalfsBackend(metaDir, filesDir)
+	fileBackend := localfs.NewLocalfsBackend(metaDir, filesDir, 0)
 
 	files, err := fileBackend.List()
 	if err != nil {

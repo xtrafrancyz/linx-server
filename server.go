@@ -70,6 +70,7 @@ var Config struct {
 	cleanupEveryMinutes       uint64
 	forbiddenExtensions       headerList
 	pprofBind                 string
+	minFreeSpaceGB            float64
 }
 
 //go:embed static templates
@@ -175,7 +176,7 @@ func setup() *echo.Echo {
 	if Config.s3Bucket != "" {
 		storageBackend = s3.NewS3Backend(Config.s3Bucket, Config.s3Region, Config.s3Endpoint, Config.s3ForcePathStyle)
 	} else {
-		storageBackend = localfs.NewLocalfsBackend(Config.metaDir, Config.filesDir)
+		storageBackend = localfs.NewLocalfsBackend(Config.metaDir, Config.filesDir, Config.minFreeSpaceGB)
 		if Config.cleanupEveryMinutes > 0 {
 			go cleanup.PeriodicCleanup(time.Duration(Config.cleanupEveryMinutes)*time.Minute, Config.filesDir, Config.metaDir, Config.noLogs)
 		}
@@ -325,6 +326,8 @@ func main() {
 		"Default expiry time in seconds for cli uploads (set 0 to use max expiry)")
 	flag.StringVar(&Config.pprofBind, "pprof-bind", "",
 		"Bind address for pprof (e.g. 127.0.0.1:6060)")
+	flag.Float64Var(&Config.minFreeSpaceGB, "min-free-space-gb", 0,
+		"Minimum free disk space in GB to maintain (default 0, disabled). Only applies to localfs backend.")
 
 	iniflags.Parse()
 
