@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"io"
 	"net/http"
@@ -38,6 +39,7 @@ type UploadRequest struct {
 	expiry    time.Duration // Seconds until expiry, 0 = never
 	deleteKey string        // Empty string if not defined
 	accessKey string        // Empty string if not defined
+	ctx       context.Context
 }
 
 // Metadata associated with a file as it would actually be stored
@@ -53,7 +55,7 @@ func uploadPostHandler(c echo.Context) error {
 		return badRequestHandler(c, RespAUTO, "")
 	}
 
-	upReq := UploadRequest{}
+	upReq := UploadRequest{ctx: c.Request().Context()}
 	uploadHeaderProcess(r, &upReq)
 
 	contentType := r.Header.Get("Content-Type")
@@ -114,7 +116,7 @@ func uploadPutHandler(c echo.Context) error {
 	r := c.Request()
 	w := c.Response().Writer
 
-	upReq := UploadRequest{}
+	upReq := UploadRequest{ctx: c.Request().Context()}
 	uploadHeaderProcess(r, &upReq)
 
 	defer r.Body.Close()
@@ -192,7 +194,7 @@ func processUpload(upReq UploadRequest) (upload Upload, err error) {
 	for {
 		slug := generateBarename()
 		upload.Filename = strings.Join([]string{slug, extension}, ".")
-		exists, err := storageBackend.Exists(upload.Filename)
+		exists, err := storageBackend.Exists(upReq.ctx, upload.Filename)
 		if err != nil {
 			return upload, err
 		}
@@ -221,7 +223,7 @@ func processUpload(upReq UploadRequest) (upload Upload, err error) {
 		upReq.filename = upload.Filename
 	}
 
-	upload.Metadata, err = storageBackend.Put(upload.Filename, upReq.filename, io.MultiReader(bytes.NewReader(header), upReq.src), fileExpiry, upReq.deleteKey, upReq.accessKey)
+	upload.Metadata, err = storageBackend.Put(upReq.ctx, upload.Filename, upReq.filename, io.MultiReader(bytes.NewReader(header), upReq.src), fileExpiry, upReq.deleteKey, upReq.accessKey)
 	if err != nil {
 		return upload, err
 	}

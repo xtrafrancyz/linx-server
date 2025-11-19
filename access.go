@@ -108,7 +108,7 @@ func fileAccessHandler(c echo.Context) error {
 
 	fileName := c.Param("name")
 
-	metadata, err := checkFile(fileName)
+	metadata, err := checkFile(c.Request().Context(), fileName)
 	if err == backends.NotFoundErr {
 		return notFoundHandler(c)
 	} else if err != nil {
@@ -156,7 +156,7 @@ func redirectBlockbenchHandler(c echo.Context, fileName string, metadata backend
 		return oopsHandler(c, RespHTML, "File too large for Blockbench upload.")
 	}
 
-	metadata, reader, err := storageBackend.Get(fileName)
+	metadata, reader, err := storageBackend.Get(c.Request().Context(), fileName)
 	if err != nil {
 		return oopsHandler(c, RespHTML, err.Error())
 	}

@@ -1,6 +1,7 @@
 package backends
 
 import (
+	"context"
 	"errors"
 	"io"
 	"net/http"
@@ -8,19 +9,19 @@ import (
 )
 
 type StorageBackend interface {
-	Delete(key string) error
-	Exists(key string) (bool, error)
-	Head(key string) (Metadata, error)
-	Get(key string) (Metadata, io.ReadCloser, error)
-	Put(key, originalName string, r io.Reader, expiry time.Time, deleteKey, accessKey string) (Metadata, error)
-	PutMetadata(key string, m Metadata) error
-	ServeFile(key string, w http.ResponseWriter, r *http.Request) error
-	Size(key string) (int64, error)
+	Delete(ctx context.Context, key string) error
+	Exists(ctx context.Context, key string) (bool, error)
+	Head(ctx context.Context, key string) (Metadata, error)
+	Get(ctx context.Context, key string) (Metadata, io.ReadCloser, error)
+	Put(ctx context.Context, key, originalName string, r io.Reader, expiry time.Time, deleteKey, accessKey string) (Metadata, error)
+	PutMetadata(ctx context.Context, key string, m Metadata) error
+	ServeFile(ctx context.Context, key string, w http.ResponseWriter, r *http.Request) error
+	Size(ctx context.Context, key string) (int64, error)
 }
 
 type MetaStorageBackend interface {
 	StorageBackend
-	List() ([]string, error)
+	List(ctx context.Context) ([]string, error)
 }
 
 var NotFoundErr = errors.New("File not found.")

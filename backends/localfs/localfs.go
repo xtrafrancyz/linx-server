@@ -1,6 +1,7 @@
 package localfs
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -32,14 +33,14 @@ type MetadataJSON struct {
 	ArchiveFiles []string `json:"archive_files,omitempty"`
 }
 
-func (b LocalfsBackend) Delete(key string) error {
+func (b LocalfsBackend) Delete(ctx context.Context, key string) error {
 	return errors.Join(
 		os.Remove(path.Join(b.filesPath, key)),
 		os.Remove(path.Join(b.metaPath, key)),
 	)
 }
 
-func (b LocalfsBackend) Exists(key string) (bool, error) {
+func (b LocalfsBackend) Exists(ctx context.Context, key string) (bool, error) {
 	_, err := os.Stat(path.Join(b.filesPath, key))
 	if err == nil {
 		return true, nil
@@ -50,7 +51,7 @@ func (b LocalfsBackend) Exists(key string) (bool, error) {
 	}
 }
 
-func (b LocalfsBackend) Head(key string) (metadata backends.Metadata, err error) {
+func (b LocalfsBackend) Head(ctx context.Context, key string) (metadata backends.Metadata, err error) {
 	f, err := os.Open(path.Join(b.metaPath, key))
 	if os.IsNotExist(err) {
 		return metadata, backends.NotFoundErr
@@ -78,8 +79,8 @@ func (b LocalfsBackend) Head(key string) (metadata backends.Metadata, err error)
 	return
 }
 
-func (b LocalfsBackend) Get(key string) (metadata backends.Metadata, f io.ReadCloser, err error) {
-	metadata, err = b.Head(key)
+func (b LocalfsBackend) Get(ctx context.Context, key string) (metadata backends.Metadata, f io.ReadCloser, err error) {
+	metadata, err = b.Head(ctx, key)
 	if err != nil {
 		return
 	}
@@ -92,8 +93,8 @@ func (b LocalfsBackend) Get(key string) (metadata backends.Metadata, f io.ReadCl
 	return
 }
 
-func (b LocalfsBackend) ServeFile(key string, w http.ResponseWriter, r *http.Request) (err error) {
-	_, err = b.Head(key)
+func (b LocalfsBackend) ServeFile(ctx context.Context, key string, w http.ResponseWriter, r *http.Request) (err error) {
+	_, err = b.Head(ctx, key)
 	if err != nil {
 		return
 	}
@@ -134,7 +135,7 @@ func (b LocalfsBackend) writeMetadata(key string, metadata backends.Metadata) er
 	return nil
 }
 
-func (b LocalfsBackend) Put(key, originalName string, r io.Reader, expiry time.Time, deleteKey, accessKey string) (m backends.Metadata, err error) {
+func (b LocalfsBackend) Put(ctx context.Context, key, originalName string, r io.Reader, expiry time.Time, deleteKey, accessKey string) (m backends.Metadata, err error) {
 	var cachedUsage *disk.UsageStat
 	minFreeBytes := uint64(b.minFreeSpaceGB * 1024 * 1024 * 1024)
 	if b.minFreeSpaceGB > 0 {
@@ -198,7 +199,7 @@ func (b LocalfsBackend) Put(key, originalName string, r io.Reader, expiry time.T
 	return
 }
 
-func (b LocalfsBackend) PutMetadata(key string, m backends.Metadata) (err error) {
+func (b LocalfsBackend) PutMetadata(ctx context.Context, key string, m backends.Metadata) (err error) {
 	err = b.writeMetadata(key, m)
 	if err != nil {
 		return
@@ -207,7 +208,7 @@ func (b LocalfsBackend) PutMetadata(key string, m backends.Metadata) (err error)
 	return
 }
 
-func (b LocalfsBackend) Size(key string) (int64, error) {
+func (b LocalfsBackend) Size(ctx context.Context, key string) (int64, error) {
 	fileInfo, err := os.Stat(path.Join(b.filesPath, key))
 	if err != nil {
 		return 0, err
@@ -216,7 +217,7 @@ func (b LocalfsBackend) Size(key string) (int64, error) {
 	return fileInfo.Size(), nil
 }
 
-func (b LocalfsBackend) List() ([]string, error) {
+func (b LocalfsBackend) List(ctx context.Context) ([]string, error) {
 	var output []string
 
 	files, err := os.ReadDir(b.filesPath)

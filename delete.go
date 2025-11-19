@@ -13,7 +13,7 @@ func deleteHandler(c echo.Context) error {
 	filename := c.Param("name")
 
 	// Ensure that file exists and delete key is correct
-	metadata, err := storageBackend.Head(filename)
+	metadata, err := storageBackend.Head(c.Request().Context(), filename)
 	if err == backends.NotFoundErr {
 		return echo.ErrNotFound // 404 - file doesn't exist
 	} else if err != nil {
@@ -21,7 +21,7 @@ func deleteHandler(c echo.Context) error {
 	}
 
 	if Config.anyoneCanDelete || metadata.DeleteKey == requestKey {
-		err = storageBackend.Delete(filename)
+		err = storageBackend.Delete(c.Request().Context(), filename)
 		if err != nil {
 			return oopsHandler(c, RespPLAIN, "Could not delete")
 		}

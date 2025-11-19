@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"strconv"
@@ -24,8 +23,8 @@ type S3Backend struct {
 	svc    *s3.Client
 }
 
-func (b S3Backend) Delete(key string) error {
-	_, err := b.svc.DeleteObject(context.TODO(), &s3.DeleteObjectInput{
+func (b S3Backend) Delete(ctx context.Context, key string) error {
+	_, err := b.svc.DeleteObject(ctx, &s3.DeleteObjectInput{
 		Bucket: aws.String(b.bucket),
 		Key:    aws.String(key),
 	})
@@ -35,17 +34,20 @@ func (b S3Backend) Delete(key string) error {
 	return nil
 }
 
-func (b S3Backend) Exists(key string) (bool, error) {
-	_, err := b.svc.HeadObject(context.TODO(), &s3.HeadObjectInput{
+func (b S3Backend) Exists(ctx context.Context, key string) (bool, error) {
+	_, err := b.svc.HeadObject(ctx, &s3.HeadObjectInput{
 		Bucket: aws.String(b.bucket),
 		Key:    aws.String(key),
 	})
 	return err == nil, err
 }
 
-func (b S3Backend) Head(key string) (metadata backends.Metadata, err error) {
+func (b S3Backend) Head(ctx context.Context, key string) (metadata backends.Metadata, err error) {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
 	var result *s3.HeadObjectOutput
-	result, err = b.svc.HeadObject(context.TODO(), &s3.HeadObjectInput{
+	result, err = b.svc.HeadObject(ctx, &s3.HeadObjectInput{
 		Bucket: aws.String(b.bucket),
 		Key:    aws.String(key),
 	})
@@ -62,9 +64,9 @@ func (b S3Backend) Head(key string) (metadata backends.Metadata, err error) {
 	return
 }
 
-func (b S3Backend) Get(key string) (metadata backends.Metadata, r io.ReadCloser, err error) {
+func (b S3Backend) Get(ctx context.Context, key string) (metadata backends.Metadata, r io.ReadCloser, err error) {
 	var result *s3.GetObjectOutput
-	result, err = b.svc.GetObject(context.TODO(), &s3.GetObjectInput{
+	result, err = b.svc.GetObject(ctx, &s3.GetObjectInput{
 		Bucket: aws.String(b.bucket),
 		Key:    aws.String(key),
 	})
@@ -82,11 +84,11 @@ func (b S3Backend) Get(key string) (metadata backends.Metadata, r io.ReadCloser,
 	return
 }
 
-func (b S3Backend) ServeFile(key string, w http.ResponseWriter, r *http.Request) (err error) {
+func (b S3Backend) ServeFile(ctx context.Context, key string, w http.ResponseWriter, r *http.Request) (err error) {
 	var result *s3.GetObjectOutput
 
 	if r.Header.Get("Range") != "" {
-		result, err = b.svc.GetObject(context.TODO(), &s3.GetObjectInput{
+		result, err = b.svc.GetObject(ctx, &s3.GetObjectInput{
 			Bucket: aws.String(b.bucket),
 			Key:    aws.String(key),
 			Range:  aws.String(r.Header.Get("Range")),
@@ -98,7 +100,7 @@ func (b S3Backend) ServeFile(key string, w http.ResponseWriter, r *http.Request)
 		w.Header().Set("Accept-Ranges", "bytes")
 
 	} else {
-		result, err = b.svc.GetObject(context.TODO(), &s3.GetObjectInput{
+		result, err = b.svc.GetObject(ctx, &s3.GetObjectInput{
 			Bucket: aws.String(b.bucket),
 			Key:    aws.String(key),
 		})
@@ -158,8 +160,8 @@ func unmapMetadata(input map[string]string) (m backends.Metadata, err error) {
 	return
 }
 
-func (b S3Backend) Put(key, originalName string, r io.Reader, expiry time.Time, deleteKey, accessKey string) (m backends.Metadata, err error) {
-	tmpDst, err := ioutil.TempFile("", "linx-server-upload")
+func (b S3Backend) Put(ctx context.Context, key, originalName string, r io.Reader, expiry time.Time, deleteKey, accessKey string) (m backends.Metadata, err error) {
+	tmpDst, err := os.CreateTemp("", "linx-server-upload")
 	if err != nil {
 		return m, err
 	}
@@ -201,7 +203,7 @@ func (b S3Backend) Put(key, originalName string, r io.Reader, expiry time.Time, 
 		Body:     tmpDst,
 		Metadata: mapMetadata(m),
 	}
-	_, err = uploader.Upload(context.TODO(), input)
+	_, err = uploader.Upload(ctx, input)
 	if err != nil {
 		return
 	}
@@ -209,8 +211,8 @@ func (b S3Backend) Put(key, originalName string, r io.Reader, expiry time.Time, 
 	return
 }
 
-func (b S3Backend) PutMetadata(key string, m backends.Metadata) (err error) {
-	_, err = b.svc.CopyObject(context.TODO(), &s3.CopyObjectInput{
+func (b S3Backend) PutMetadata(ctx context.Context, key string, m backends.Metadata) (err error) {
+	_, err = b.svc.CopyObject(ctx, &s3.CopyObjectInput{
 		Bucket:            aws.String(b.bucket),
 		Key:               aws.String(key),
 		CopySource:        aws.String("/" + b.bucket + "/" + key),
@@ -224,12 +226,12 @@ func (b S3Backend) PutMetadata(key string, m backends.Metadata) (err error) {
 	return
 }
 
-func (b S3Backend) Size(key string) (int64, error) {
+func (b S3Backend) Size(ctx context.Context, key string) (int64, error) {
 	input := &s3.HeadObjectInput{
 		Bucket: aws.String(b.bucket),
 		Key:    aws.String(key),
 	}
-	result, err := b.svc.HeadObject(context.TODO(), input)
+	result, err := b.svc.HeadObject(ctx, input)
 	if err != nil {
 		return 0, err
 	}
@@ -237,13 +239,16 @@ func (b S3Backend) Size(key string) (int64, error) {
 	return *result.ContentLength, nil
 }
 
-func (b S3Backend) List() ([]string, error) {
+func (b S3Backend) List(ctx context.Context) ([]string, error) {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
 	var output []string
 	input := &s3.ListObjectsInput{
 		Bucket: aws.String(b.bucket),
 	}
 
-	results, err := b.svc.ListObjects(context.TODO(), input)
+	results, err := b.svc.ListObjects(ctx, input)
 	if err != nil {
 		return nil, err
 	}

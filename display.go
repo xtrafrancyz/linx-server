@@ -62,7 +62,7 @@ func fileDisplayHandler(c echo.Context, fileName string, metadata backends.Metad
 		tpl = "display/bbmodel.html"
 
 	} else if extension == "story" {
-		metadata, reader, err := storageBackend.Get(fileName)
+		metadata, reader, err := storageBackend.Get(c.Request().Context(), fileName)
 		if err != nil {
 			return oopsHandler(c, RespHTML, err.Error())
 		}
@@ -78,7 +78,7 @@ func fileDisplayHandler(c echo.Context, fileName string, metadata backends.Metad
 		}
 
 	} else if extension == "md" {
-		metadata, reader, err := storageBackend.Get(fileName)
+		metadata, reader, err := storageBackend.Get(c.Request().Context(), fileName)
 		if err != nil {
 			return oopsHandler(c, RespHTML, err.Error())
 		}
@@ -96,7 +96,7 @@ func fileDisplayHandler(c echo.Context, fileName string, metadata backends.Metad
 		}
 
 	} else if strings.HasPrefix(metadata.Mimetype, "text/") || supportedBinExtension(extension) {
-		metadata, reader, err := storageBackend.Get(fileName)
+		metadata, reader, err := storageBackend.Get(c.Request().Context(), fileName)
 		if err != nil {
 			return oopsHandler(c, RespHTML, err.Error())
 		}

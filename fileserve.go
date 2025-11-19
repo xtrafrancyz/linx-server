@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"net/url"
 	"strconv"
@@ -16,7 +17,7 @@ import (
 func fileServeHandler(c echo.Context) error {
 	fileName := c.Param("name")
 
-	metadata, err := checkFile(fileName)
+	metadata, err := checkFile(c.Request().Context(), fileName)
 	if err == backends.NotFoundErr {
 		return notFoundHandler(c)
 	} else if err != nil {
@@ -64,7 +65,7 @@ func fileServeHandler(c echo.Context) error {
 	}
 
 	if r.Method != "HEAD" {
-		err = storageBackend.ServeFile(fileName, w, r)
+		err = storageBackend.ServeFile(c.Request().Context(), fileName, w, r)
 		if err != nil {
 			return oopsHandler(c, RespAUTO, err.Error())
 		}
@@ -73,14 +74,14 @@ func fileServeHandler(c echo.Context) error {
 	return nil
 }
 
-func checkFile(filename string) (metadata backends.Metadata, err error) {
-	metadata, err = storageBackend.Head(filename)
+func checkFile(ctx context.Context, filename string) (metadata backends.Metadata, err error) {
+	metadata, err = storageBackend.Head(ctx, filename)
 	if err != nil {
 		return
 	}
 
 	if expiry.IsTsExpired(metadata.Expiry) {
-		storageBackend.Delete(filename)
+		storageBackend.Delete(ctx, filename)
 		err = backends.NotFoundErr
 		return
 	}
