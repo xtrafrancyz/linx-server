@@ -8,7 +8,7 @@ import (
 	"io"
 	"sort"
 
-	"github.com/nwaples/rardecode"
+	"github.com/nwaples/rardecode/v2"
 )
 
 type ReadSeekerAt interface {
@@ -38,7 +38,10 @@ func ListArchiveFiles(mimetype string, size int64, r ReadSeekerAt) (files []stri
 			files = append(files, f.Name)
 		}
 	case "application/x-rar", "application/x-rar-compressed":
-		reader, err := rardecode.NewReader(r, "")
+		reader, err := rardecode.NewReader(r,
+			rardecode.MaxDictionarySize(10<<20), // 10 MB
+			rardecode.SkipCheck,
+		)
 		if err != nil {
 			return nil, err
 		}
