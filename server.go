@@ -6,6 +6,7 @@ import (
 	"errors"
 	"flag"
 	"log"
+	"log/slog"
 	"net"
 	"net/http"
 	"net/http/fcgi"
@@ -108,6 +109,7 @@ func EchoContentSecurityPolicy(policy, referrerPolicy, frame string) echo.Middle
 func setup() *echo.Echo {
 	e := echo.New()
 	e.Use(middleware.Recover())
+	e.Logger = slog.Default()
 
 	if Config.realIp {
 		e.IPExtractor = echo.ExtractIPFromXFFHeader()
