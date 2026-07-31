@@ -3,13 +3,13 @@ package main
 import (
 	"bytes"
 	"errors"
-	"github.com/labstack/echo/v4"
 	"io"
 	"path"
 	"path/filepath"
 	"strings"
 
 	"github.com/flosch/pongo2/v5"
+	"github.com/labstack/echo/v5"
 )
 
 type Pongo2Loader struct {
@@ -74,7 +74,7 @@ func (fs *Pongo2Loader) compile() error {
 	return nil
 }
 
-func (fs *Pongo2Loader) Render(w io.Writer, name string, data interface{}, c echo.Context) error {
+func (fs *Pongo2Loader) Render(c *echo.Context, w io.Writer, name string, data any) error {
 	tpl, ok := fs.parsed[name]
 	if !ok {
 		return errors.New("Template not found: " + name)

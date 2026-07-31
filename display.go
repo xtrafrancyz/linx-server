@@ -12,14 +12,14 @@ import (
 	"github.com/andreimarcu/linx-server/expiry"
 	"github.com/dustin/go-humanize"
 	"github.com/flosch/pongo2/v5"
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/russross/blackfriday"
 )
 
 const maxDisplayFileSizeBytes = 1024 * 512
 
-func fileDisplayHandler(c echo.Context, fileName string, metadata backends.Metadata) error {
+func fileDisplayHandler(c *echo.Context, fileName string, metadata backends.Metadata) error {
 	r := c.Request()
 
 	var expiryHuman string

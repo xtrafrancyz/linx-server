@@ -17,7 +17,7 @@ import (
 	"github.com/andreimarcu/linx-server/helpers"
 	"github.com/dchest/uniuri"
 	"github.com/gabriel-vasile/mimetype"
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 	"github.com/microcosm-cc/bluemonday"
 )
 
@@ -48,7 +48,7 @@ type Upload struct {
 	Metadata backends.Metadata
 }
 
-func uploadPostHandler(c echo.Context) error {
+func uploadPostHandler(c *echo.Context) error {
 	r := c.Request()
 
 	if !strictReferrerCheck(r, getSiteURL(r), []string{"Linx-Delete-Key", "Linx-Expiry", "X-Requested-With"}) {
@@ -112,16 +112,15 @@ func uploadPostHandler(c echo.Context) error {
 	}
 }
 
-func uploadPutHandler(c echo.Context) error {
+func uploadPutHandler(c *echo.Context) error {
 	r := c.Request()
-	w := c.Response().Writer
 
 	upReq := UploadRequest{ctx: c.Request().Context()}
 	uploadHeaderProcess(r, &upReq)
 
 	defer r.Body.Close()
 	upReq.filename = c.Param("name")
-	upReq.src = http.MaxBytesReader(w, r.Body, Config.maxSize)
+	upReq.src = http.MaxBytesReader(c.Response(), r.Body, Config.maxSize)
 
 	upload, err := processUpload(upReq)
 

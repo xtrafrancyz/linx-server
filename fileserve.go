@@ -11,10 +11,10 @@ import (
 	"github.com/andreimarcu/linx-server/backends"
 	"github.com/andreimarcu/linx-server/expiry"
 	"github.com/andreimarcu/linx-server/httputil"
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 )
 
-func fileServeHandler(c echo.Context) error {
+func fileServeHandler(c *echo.Context) error {
 	fileName := c.Param("name")
 
 	metadata, err := checkFile(c.Request().Context(), fileName)
@@ -25,7 +25,7 @@ func fileServeHandler(c echo.Context) error {
 	}
 
 	r := c.Request()
-	w := c.Response().Writer
+	w := c.Response()
 
 	if src, err := checkAccessKey(r, &metadata); err != nil {
 		// remove invalid cookie

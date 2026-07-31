@@ -16,7 +16,7 @@ import (
 
 	"github.com/andreimarcu/linx-server/backends"
 	"github.com/flosch/pongo2/v5"
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 )
 
 type accessKeySource int
@@ -98,9 +98,9 @@ func setAccessKeyCookies(w http.ResponseWriter, siteURL, fileName, value string,
 	http.SetCookie(w, &cookie)
 }
 
-func fileAccessHandler(c echo.Context) error {
+func fileAccessHandler(c *echo.Context) error {
 	r := c.Request()
-	w := c.Response().Writer
+	w := c.Response()
 
 	if !Config.noDirectAgents && cliUserAgentRe.MatchString(r.Header.Get("User-Agent")) && !strings.EqualFold("application/json", r.Header.Get("Accept")) {
 		return fileServeHandler(c)
@@ -148,7 +148,7 @@ func fileAccessHandler(c echo.Context) error {
 	return fileDisplayHandler(c, fileName, metadata)
 }
 
-func redirectBlockbenchHandler(c echo.Context, fileName string, metadata backends.Metadata) error {
+func redirectBlockbenchHandler(c *echo.Context, fileName string, metadata backends.Metadata) error {
 	if metadata.Mimetype != "application/vnd.blobkbench.bbmodel+json" {
 		return oopsHandler(c, RespHTML, "Invalid .bbmodel file.")
 	}

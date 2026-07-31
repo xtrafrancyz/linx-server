@@ -21,15 +21,16 @@ func ListArchiveFiles(mimetype string, size int64, r ReadSeekerAt) (files []stri
 	switch mimetype {
 	case "application/x-tar":
 		files, err = listTarFiles(r)
-	case "application/gzip", "application/x-gzip":
+	case "application/gzip":
 		gzf, err0 := gzip.NewReader(r)
 		if err0 != nil {
 			return nil, err0
 		}
+		defer gzf.Close()
 		files, err = listTarFiles(gzf)
-	case "application/x-bzip", "application/bzip2", "application/x-bzip2":
+	case "application/x-bzip2":
 		files, err = listTarFiles(bzip2.NewReader(r))
-	case "application/zip", "application/x-zip", "application/x-zip-compressed":
+	case "application/zip", "application/java-archive", "application/vnd.android.package-archive":
 		zf, err := zip.NewReader(r, size)
 		if err != nil {
 			return nil, err
@@ -37,7 +38,7 @@ func ListArchiveFiles(mimetype string, size int64, r ReadSeekerAt) (files []stri
 		for _, f := range zf.File {
 			files = append(files, f.Name)
 		}
-	case "application/x-rar", "application/x-rar-compressed":
+	case "application/vnd.rar":
 		reader, err := rardecode.NewReader(r,
 			rardecode.MaxDictionarySize(10<<20), // 10 MB
 			rardecode.SkipCheck,
@@ -63,6 +64,11 @@ func ListArchiveFiles(mimetype string, size int64, r ReadSeekerAt) (files []stri
 
 	if len(files) > 0 {
 		sort.Strings(files)
+
+		const maxFiles = 5000
+		if len(files) > maxFiles {
+			files = files[:maxFiles]
+		}
 	}
 	return
 }

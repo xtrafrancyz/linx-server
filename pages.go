@@ -1,11 +1,11 @@
 package main
 
 import (
-	"github.com/labstack/echo/v4"
 	"net/http"
 	"strings"
 
 	"github.com/flosch/pongo2/v5"
+	"github.com/labstack/echo/v5"
 )
 
 type RespType int
@@ -17,20 +17,20 @@ const (
 	RespAUTO
 )
 
-func indexHandler(c echo.Context) error {
+func indexHandler(c *echo.Context) error {
 	return c.Render(http.StatusOK, "index.html", pongo2.Context{
 		"maxsize":    Config.maxSize,
 		"expirylist": listExpirationTimes(),
 	})
 }
 
-func pasteHandler(c echo.Context) error {
+func pasteHandler(c *echo.Context) error {
 	return c.Render(http.StatusOK, "paste.html", pongo2.Context{
 		"expirylist": listExpirationTimes(),
 	})
 }
 
-func apiDocHandler(c echo.Context) error {
+func apiDocHandler(c *echo.Context) error {
 	return c.Render(http.StatusOK, "API.html", pongo2.Context{
 		"siteurl":        getSiteURL(c.Request()),
 		"keyless_delete": Config.anyoneCanDelete,
@@ -38,7 +38,7 @@ func apiDocHandler(c echo.Context) error {
 }
 
 func makeCustomPageHandler(fileName string) echo.HandlerFunc {
-	return func(c echo.Context) error {
+	return func(c *echo.Context) error {
 		return c.Render(http.StatusOK, "custom_page.html", pongo2.Context{
 			"siteurl":  getSiteURL(c.Request()),
 			"contents": customPages[fileName],
@@ -48,11 +48,11 @@ func makeCustomPageHandler(fileName string) echo.HandlerFunc {
 	}
 }
 
-func notFoundHandler(c echo.Context) error {
+func notFoundHandler(c *echo.Context) error {
 	return c.Render(http.StatusNotFound, "404.html", nil)
 }
 
-func oopsHandler(c echo.Context, rt RespType, msg string) error {
+func oopsHandler(c *echo.Context, rt RespType, msg string) error {
 	if msg == "" {
 		msg = "Oops! Something went wrong..."
 	}
@@ -75,7 +75,7 @@ func oopsHandler(c echo.Context, rt RespType, msg string) error {
 	return nil
 }
 
-func badRequestHandler(c echo.Context, rt RespType, msg string) error {
+func badRequestHandler(c *echo.Context, rt RespType, msg string) error {
 	if rt == RespHTML {
 		return c.Render(http.StatusBadRequest, "400.html", pongo2.Context{"msg": msg})
 	} else if rt == RespPLAIN {
@@ -94,6 +94,6 @@ func badRequestHandler(c echo.Context, rt RespType, msg string) error {
 	return nil
 }
 
-func unauthorizedHandler(c echo.Context) error {
+func unauthorizedHandler(c *echo.Context) error {
 	return c.Render(http.StatusUnauthorized, "401.html", nil)
 }

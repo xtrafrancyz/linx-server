@@ -4,10 +4,10 @@ import (
 	"net/http"
 
 	"github.com/andreimarcu/linx-server/backends"
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 )
 
-func deleteHandler(c echo.Context) error {
+func deleteHandler(c *echo.Context) error {
 	requestKey := c.Request().Header.Get("Linx-Delete-Key")
 
 	filename := c.Param("name")

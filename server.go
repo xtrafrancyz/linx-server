@@ -1,7 +1,9 @@
 package main
 
 import (
+	"context"
 	"embed"
+	"errors"
 	"flag"
 	"log"
 	"net"
@@ -20,8 +22,8 @@ import (
 	"github.com/andreimarcu/linx-server/backends/s3"
 	"github.com/andreimarcu/linx-server/cleanup"
 	"github.com/andreimarcu/linx-server/helpers"
-	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
+	"github.com/labstack/echo/v5"
+	"github.com/labstack/echo/v5/middleware"
 	"github.com/vharitonsky/iniflags"
 )
 
@@ -83,8 +85,8 @@ var customPagesNames = make(map[string]string)
 // EchoContentSecurityPolicy creates an Echo middleware for Content Security Policy
 func EchoContentSecurityPolicy(policy, referrerPolicy, frame string) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) error {
-			w := c.Response().Writer
+		return func(c *echo.Context) error {
+			w := c.Response()
 
 			// only add a CSP if one is not already set
 			if existing := w.Header().Get(echo.HeaderContentSecurityPolicy); existing == "" {
@@ -105,7 +107,6 @@ func EchoContentSecurityPolicy(policy, referrerPolicy, frame string) echo.Middle
 
 func setup() *echo.Echo {
 	e := echo.New()
-	e.HideBanner = true
 	e.Use(middleware.Recover())
 
 	if Config.realIp {
@@ -119,7 +120,7 @@ func setup() *echo.Echo {
 			LogMethod:   true,
 			LogRemoteIP: true,
 			LogLatency:  true,
-			LogValuesFunc: func(c echo.Context, v middleware.RequestLoggerValues) error {
+			LogValuesFunc: func(c *echo.Context, v middleware.RequestLoggerValues) error {
 				log.Printf(`%d %s %v from: %s, %v`, v.Status, v.Method, v.URI, v.RemoteIP, v.Latency)
 				return nil
 			},
@@ -237,21 +238,23 @@ func setup() *echo.Echo {
 	}
 
 	// Set custom 404 handler
-	e.HTTPErrorHandler = func(err error, c echo.Context) {
-		if he, ok := err.(*echo.HTTPError); ok {
+	defaultErrorHandler := echo.DefaultHTTPErrorHandler(false)
+	e.HTTPErrorHandler = func(c *echo.Context, err error) {
+		var he *echo.HTTPError
+		if errors.As(err, &he) {
 			if he.Code == http.StatusNotFound {
-				notFoundHandler(c)
+				_ = notFoundHandler(c)
 				return
 			} else if he.Code == http.StatusUnauthorized {
-				unauthorizedHandler(c)
+				_ = unauthorizedHandler(c)
 				return
 			} else if he.Code == http.StatusBadRequest {
-				badRequestHandler(c, RespAUTO, "")
+				_ = badRequestHandler(c, RespAUTO, "")
 				return
 			}
 		}
 		log.Printf("Error: %v", err)
-		e.DefaultHTTPErrorHandler(err, c)
+		defaultErrorHandler(c, err)
 	}
 
 	return e
@@ -363,20 +366,26 @@ func main() {
 		}
 	} else if Config.certFile != "" {
 		log.Printf("Serving over https, bound on %s", Config.bind)
-		err := e.StartTLS(Config.bind, Config.certFile, Config.keyFile)
+		sc := &echo.StartConfig{
+			Address: Config.bind,
+		}
+		err := sc.StartTLS(context.Background(), e, Config.certFile, Config.keyFile)
 		if err != nil {
 			log.Fatal(err)
 		}
 	} else {
 		log.Printf("Serving over http, bound on %s", Config.bind)
+		sc := &echo.StartConfig{
+			Address: Config.bind,
+		}
 		if strings.HasPrefix(Config.bind, "/") {
 			listener, err := listenUnixSocket(Config.bind)
 			if err != nil {
 				log.Fatal("Could not bind: ", err)
 			}
-			e.Listener = listener
+			sc.Listener = listener
 		}
-		err := e.Start(Config.bind)
+		err := sc.Start(context.Background(), e)
 		if err != nil {
 			log.Fatal(err)
 		}

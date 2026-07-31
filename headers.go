@@ -5,7 +5,7 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 )
 
 func AddHeaders(headers []string) echo.MiddlewareFunc {
@@ -23,11 +23,9 @@ func AddHeaders(headers []string) echo.MiddlewareFunc {
 	}
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) error {
-			w := c.Response().Writer
-
+		return func(c *echo.Context) error {
 			for _, header := range parsed {
-				w.Header().Add(header.Key, header.Value)
+				c.Response().Header().Add(header.Key, header.Value)
 			}
 
 			return next(c)

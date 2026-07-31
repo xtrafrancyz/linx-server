@@ -11,7 +11,7 @@ require (
 	github.com/dustin/go-humanize v1.0.1
 	github.com/flosch/pongo2/v5 v5.0.0
 	github.com/gabriel-vasile/mimetype v1.4.15
-	github.com/labstack/echo/v4 v4.15.4
+	github.com/labstack/echo/v5 v5.3.1
 	github.com/microcosm-cc/bluemonday v1.0.27
 	github.com/minio/sha256-simd v1.0.1
 	github.com/nwaples/rardecode/v2 v2.3.0
@@ -41,16 +41,9 @@ require (
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/gorilla/css v1.0.1 // indirect
 	github.com/klauspost/cpuid/v2 v2.4.0 // indirect
-	github.com/labstack/gommon v0.5.0 // indirect
-	github.com/mattn/go-colorable v0.1.15 // indirect
-	github.com/mattn/go-isatty v0.0.24 // indirect
 	github.com/power-devops/perfstat v0.0.0-20240221224432-82ca36839d55 // indirect
-	github.com/valyala/bytebufferpool v1.0.0 // indirect
-	github.com/valyala/fasttemplate v1.2.2 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
-	golang.org/x/crypto v0.54.0 // indirect
 	golang.org/x/net v0.57.0 // indirect
 	golang.org/x/sys v0.47.0 // indirect
-	golang.org/x/text v0.40.0 // indirect
 	golang.org/x/time v0.15.0 // indirect
 )
