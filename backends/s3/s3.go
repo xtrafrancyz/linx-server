@@ -13,7 +13,7 @@ import (
 	"github.com/andreimarcu/linx-server/helpers"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
+	"github.com/aws/aws-sdk-go-v2/feature/s3/transfermanager"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 )
@@ -196,14 +196,14 @@ func (b S3Backend) Put(ctx context.Context, key, originalName string, r io.Reade
 		return m, err
 	}
 
-	uploader := manager.NewUploader(b.svc)
-	input := &s3.PutObjectInput{
+	uploader := transfermanager.New(b.svc)
+	input := &transfermanager.UploadObjectInput{
 		Bucket:   aws.String(b.bucket),
 		Key:      aws.String(key),
 		Body:     tmpDst,
 		Metadata: mapMetadata(m),
 	}
-	_, err = uploader.Upload(ctx, input)
+	_, err = uploader.UploadObject(ctx, input)
 	if err != nil {
 		return
 	}
