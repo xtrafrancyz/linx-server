@@ -366,20 +366,24 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
-	} else if Config.certFile != "" {
+		return
+	}
+
+	sc := &echo.StartConfig{
+		Address: Config.bind,
+		BeforeServeFunc: func(s *http.Server) error {
+			s.ReadTimeout = 0
+			return nil
+		},
+	}
+	if Config.certFile != "" {
 		log.Printf("Serving over https, bound on %s", Config.bind)
-		sc := &echo.StartConfig{
-			Address: Config.bind,
-		}
 		err := sc.StartTLS(context.Background(), e, Config.certFile, Config.keyFile)
 		if err != nil {
 			log.Fatal(err)
 		}
 	} else {
 		log.Printf("Serving over http, bound on %s", Config.bind)
-		sc := &echo.StartConfig{
-			Address: Config.bind,
-		}
 		if strings.HasPrefix(Config.bind, "/") {
 			listener, err := listenUnixSocket(Config.bind)
 			if err != nil {
