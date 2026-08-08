@@ -61,18 +61,30 @@ func uploadPostHandler(c *echo.Context) error {
 	contentType := r.Header.Get("Content-Type")
 
 	if strings.HasPrefix(contentType, "multipart/form-data") {
-		file, headers, err := r.FormFile("file")
-		if r.MultipartForm != nil {
-			defer r.MultipartForm.RemoveAll()
-		}
+		reader, err := r.MultipartReader()
 		if err != nil {
-			return oopsHandler(c, RespHTML, "Could not upload file.")
+			return oopsHandler(c, RespHTML, "Bad request.")
 		}
-		defer file.Close()
 
-		upReq.src = file
-		upReq.size = headers.Size
-		upReq.filename = headers.Filename
+		for {
+			part, err := reader.NextPart()
+			if err == io.EOF {
+				break
+			}
+			if err != nil {
+				return oopsHandler(c, RespHTML, "Bad request.")
+			}
+			if part.FormName() == "file" {
+				upReq.src = http.MaxBytesReader(c.Response(), part, Config.maxSize)
+				upReq.filename = part.FileName()
+				defer part.Close()
+				break
+			}
+			_ = part.Close()
+		}
+		if upReq.src == nil {
+			return badRequestHandler(c, RespAUTO, "No file provided")
+		}
 	} else {
 		if r.PostFormValue("content") == "" {
 			return badRequestHandler(c, RespAUTO, "Empty file")
