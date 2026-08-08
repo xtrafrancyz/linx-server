@@ -52,7 +52,8 @@ Dropzone.options.dropzone = {
         file.uploadElement.setAttribute("style", 'background-image: linear-gradient(to right, var(--block-bg-color) ' + p + '%, var(--bg-color) ' + p + '%)');
     },
     sending: function (file, xhr, formData) {
-        formData.append("expires", document.getElementById("expires").value);
+        xhr.setRequestHeader("Linx-Access-Key", document.getElementById("access_key_input").value);
+        xhr.setRequestHeader("Linx-Expiry", document.getElementById("expires").value);
     },
     success: function (file, resp) {
         file.fileActions.removeChild(file.progressElement);

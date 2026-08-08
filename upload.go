@@ -59,6 +59,7 @@ func uploadPostHandler(c *echo.Context) error {
 	uploadHeaderProcess(r, &upReq)
 
 	contentType := r.Header.Get("Content-Type")
+	cli := cliUserAgentRe.MatchString(r.Header.Get("User-Agent"))
 
 	if strings.HasPrefix(contentType, "multipart/form-data") {
 		reader, err := r.MultipartReader()
@@ -74,7 +75,19 @@ func uploadPostHandler(c *echo.Context) error {
 			if err != nil {
 				return oopsHandler(c, RespHTML, "Bad request.")
 			}
-			if part.FormName() == "file" {
+			if part.FormName() == "expires" {
+				content, err := io.ReadAll(part)
+				if err != nil {
+					return oopsHandler(c, RespHTML, "Bad request.")
+				}
+				upReq.expiry = parseExpiry(string(content), cli)
+			} else if part.FormName() == accessKeyParamName {
+				content, err := io.ReadAll(part)
+				if err != nil {
+					return oopsHandler(c, RespHTML, "Bad request.")
+				}
+				upReq.accessKey = string(content)
+			} else if part.FormName() == "file" {
 				upReq.src = http.MaxBytesReader(c.Response(), part, Config.maxSize)
 				upReq.filename = part.FileName()
 				defer part.Close()
@@ -84,6 +97,12 @@ func uploadPostHandler(c *echo.Context) error {
 		}
 		if upReq.src == nil {
 			return badRequestHandler(c, RespAUTO, "No file provided")
+		}
+		if accessKey := r.Header.Get(accessKeyHeaderName); accessKey != "" {
+			upReq.accessKey = accessKey
+		}
+		if expStr := r.Header.Get("Linx-Expiry"); expStr != "" {
+			upReq.expiry = parseExpiry(expStr, cli)
 		}
 	} else {
 		if r.PostFormValue("content") == "" {
@@ -97,11 +116,9 @@ func uploadPostHandler(c *echo.Context) error {
 		upReq.src = strings.NewReader(content)
 		upReq.size = int64(len(content))
 		upReq.filename = r.PostFormValue("filename") + "." + extension
+		upReq.expiry = parseExpiry(r.PostFormValue("expires"), cli)
+		upReq.accessKey = r.PostFormValue(accessKeyParamName)
 	}
-
-	cli := cliUserAgentRe.MatchString(r.Header.Get("User-Agent"))
-	upReq.expiry = parseExpiry(r.PostFormValue("expires"), cli)
-	upReq.accessKey = r.PostFormValue(accessKeyParamName)
 
 	upload, err := processUpload(upReq)
 
